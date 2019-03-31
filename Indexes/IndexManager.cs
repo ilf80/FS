@@ -11,10 +11,6 @@ namespace FS.Indexes
 {
     internal class IndexManager : IIndexManager
     {
-        private const uint EmptyBlockIndex = 0;
-        private const int IndexPageSize = 128;
-        private const int MaxItemsInIndexPage = IndexPageSize - 1;
-
         private readonly TaskFactory taskFactory;
         private readonly IAllocationManager allocationManager;
         private readonly IBlockStorage storage;
@@ -60,11 +56,21 @@ namespace FS.Indexes
                 .ContinueWith(t => ShrinkInternal(totalBlockCount));
         }
 
-        public Task<uint> GetBlockForOffset(int offset)
+        public Task<uint[]> GetBlocksForOffset(int offset, int count)
         {
             return taskFactory
                 .StartNew(EnsureLoaded)
-                .ContinueWith(t => GetBlockForOffsetInternal(offset));
+                .ContinueWith(t => GetBlocksForOffsetInternal(offset, count));
+        }
+
+        public void Lock()
+        {
+            indexLock.EnterWriteLock();
+        }
+
+        public void Release()
+        {
+            indexLock.ExitWriteLock();
         }
 
         private async void EnsureLoaded()
@@ -93,7 +99,7 @@ namespace FS.Indexes
         {
             uint[] index;
             for (var extentionBlockIndex = rootBlockIndex;
-                extentionBlockIndex != EmptyBlockIndex;
+                extentionBlockIndex != Constants.EmptyBlockIndex;
                 extentionBlockIndex = GetNextExtentionBlockIndex(index))
             {
                 await storage.ReadBlock(extentionBlockIndex, out ListItemBlockIndexes blockIndexes);
@@ -107,13 +113,13 @@ namespace FS.Indexes
             return index[index.Length - 1];
         }
 
-        private uint GetBlockForOffsetInternal(int offset)
+        private uint[] GetBlocksForOffsetInternal(int offset, int count)
         {
             indexLock.EnterReadLock();
             try
             {
                 GetPositionByOffset(offset, out int pageNo, out int pageOffset);
-                return indexList.Skip(pageNo).Take(1).SelectMany(x => x).Skip(pageOffset).First();
+                return indexList.Skip(pageNo).Take(1).SelectMany(x => x).Skip(pageOffset).Take(count).ToArray();
             }
             finally
             {
@@ -124,10 +130,10 @@ namespace FS.Indexes
         private void GetPositionByOffset(int offset, out int pageNo, out int pageOffset)
         {
             var usedBlockCountInLastIndexPage = GetUsedBlockCountInLastIndexPage();
-            pageNo = offset / MaxItemsInIndexPage;
+            pageNo = offset / Constants.MaxItemsInIndexPage;
             if (pageNo < indexList.Count)
             {
-                pageOffset = offset % MaxItemsInIndexPage;
+                pageOffset = offset % Constants.MaxItemsInIndexPage;
                 if (pageOffset < usedBlockCountInLastIndexPage)
                 {
                     return;
@@ -140,12 +146,12 @@ namespace FS.Indexes
 
         private int GetUsedBlockCountInLastIndexPage()
         {
-            return indexList.Last.Value.Where(x => x != EmptyBlockIndex).Count();
+            return indexList.Last.Value.Where(x => x != Constants.EmptyBlockIndex).Count();
         }
 
         private int GetTotalSize()
         {
-            return (indexList.Count - 1) * MaxItemsInIndexPage + GetUsedBlockCountInLastIndexPage();
+            return (indexList.Count - 1) * Constants.MaxItemsInIndexPage + GetUsedBlockCountInLastIndexPage();
         }
 
         private async Task IncreaseInternal(int blockCount)
@@ -155,10 +161,10 @@ namespace FS.Indexes
             {
                 var blockIndex = indexList.Count == 1
                     ? rootBlockIndex
-                    : indexList.Last.Previous.Value[IndexPageSize - 1];
+                    : indexList.Last.Previous.Value[Constants.IndexPageSize - 1];
 
-                var restItems = MaxItemsInIndexPage - GetUsedBlockCountInLastIndexPage();
-                var indexPagesToRequest = blockCount < restItems ? 0 : (blockCount - restItems) / MaxItemsInIndexPage + 1;
+                var restItems = Constants.MaxItemsInIndexPage - GetUsedBlockCountInLastIndexPage();
+                var indexPagesToRequest = blockCount < restItems ? 0 : (blockCount - restItems) / Constants.MaxItemsInIndexPage + 1;
                 var requestedBlockCount = blockCount + indexPagesToRequest;
 
                 var blocks = await allocationManager.Allocate(requestedBlockCount);
@@ -168,7 +174,7 @@ namespace FS.Indexes
                 var indexOfBock = indexPagesToRequest;
                 while (restItems > 0)
                 {
-                    for (int i = MaxItemsInIndexPage - restItems; i < MaxItemsInIndexPage; i++)
+                    for (int i = Constants.MaxItemsInIndexPage - restItems; i < Constants.MaxItemsInIndexPage; i++)
                     {
                         lastIndexesPage[i] = blocks[indexOfBock++];
                     }
@@ -177,7 +183,7 @@ namespace FS.Indexes
                     bool hasNextPage = indexOfNewPage < indexPagesToRequest;
                     if (hasNextPage)
                     {
-                        lastIndexesPage[IndexPageSize - 1] = blocks[indexOfNewPage];
+                        lastIndexesPage[Constants.IndexPageSize - 1] = blocks[indexOfNewPage];
                     }
 
                     var indexPage = new ListItemBlockIndexes { Indexes = lastIndexesPage };
@@ -186,9 +192,9 @@ namespace FS.Indexes
                     if (hasNextPage)
                     {
                         blockIndex = blocks[indexOfNewPage];
-                        lastIndexesPage = new uint[IndexPageSize];
+                        lastIndexesPage = new uint[Constants.IndexPageSize];
                         indexList.AddLast(lastIndexesPage);
-                        restItems = MaxItemsInIndexPage;
+                        restItems = Constants.MaxItemsInIndexPage;
                     }
                     else
                     {
@@ -209,7 +215,7 @@ namespace FS.Indexes
             {
                 GetPositionByOffset(totalBlockCount, out int pageNo, out int pageOffset);
 
-                if (pageOffset == MaxItemsInIndexPage - 1)
+                if (pageOffset == Constants.MaxItemsInIndexPage - 1)
                 {
                     pageNo++; pageOffset = 0;
                 }
@@ -221,9 +227,9 @@ namespace FS.Indexes
                 await allocationManager.Release(blocksToRelease);
 
                 var pageToClean = indexList.Skip(pageNo).First();
-                for(var i = 0; i < IndexPageSize; i++)
+                for(var i = 0; i < Constants.IndexPageSize; i++)
                 {
-                    pageToClean[i] = EmptyBlockIndex;
+                    pageToClean[i] = Constants.EmptyBlockIndex;
                 }
                 for (var i = 0; i < indexList.Count - pageNo; i++)
                 {

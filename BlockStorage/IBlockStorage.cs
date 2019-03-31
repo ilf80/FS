@@ -9,13 +9,13 @@ namespace FS.BlockStorage
 
         ushort BlockSize { get; }
 
-        Task<IOVoid> ReadBlock(int blockIndex, ref byte[] buffer);
+        Task ReadBlock(uint blockIndex, byte[] buffer);
 
-        Task<IOVoid> WriteBlock(int blockIndex, byte[] buffer);
+        Task WriteBlock(uint blockIndex, byte[] buffer);
 
-        Task<IOVoid> ReadBlock<T>(uint blockIndex, out T target) where T : struct;
+        Task ReadBlock<T>(uint blockIndex, out T target) where T : struct;
 
-        Task<IOVoid> WriteBlock<T>(uint blockIndex, ref T target) where T : struct;
+        Task WriteBlock<T>(uint blockIndex, ref T target) where T : struct;
     }
     
 

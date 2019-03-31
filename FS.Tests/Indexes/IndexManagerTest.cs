@@ -12,6 +12,8 @@ namespace FS.Tests.Indexes
     [TestFixture]
     public class IndexManagerTest
     {
+        const int MaxPageSize = 128;
+
         private TaskFactory taskFactory;
         private Mock<IAllocationManager> allocationManager;
         private Mock<IBlockStorage> blockStorage;
@@ -37,9 +39,40 @@ namespace FS.Tests.Indexes
         }
 
         [Test]
-        public void ShouldLoadBeforeIncrease()
+        public async Task ShouldLoadBeforeIncrease()
         {
+            // Given
+            var instance = CreateInstance();
+            ListItemBlockIndexes indexes = new ListItemBlockIndexes { Indexes = new uint[MaxPageSize] };
+            blockStorage
+                .Setup(x => x.ReadBlock(blockIndex, out indexes))
+                .Returns(() => Task.CompletedTask);
 
+            // When
+            await instance.Increase(1);
+
+            // Then
+            blockStorage.Verify(x => x.ReadBlock(blockIndex, out indexes), Times.Once);
+        }
+
+        [Test]
+        [TestCase(1)]
+        [TestCase(10)]
+        [TestCase(100)]
+        public async Task ShouldRequestBlockWhenIncrease(int blockCount)
+        {
+            // Given
+            var instance = CreateInstance();
+            ListItemBlockIndexes indexes = new ListItemBlockIndexes { Indexes = new uint[MaxPageSize] };
+            blockStorage
+                .Setup(x => x.ReadBlock(blockIndex, out indexes))
+                .Returns(() => Task.CompletedTask);
+
+            // When
+            await instance.Increase(blockCount);
+
+            // Then
+            allocationManager.Verify(x => x.Allocate(blockCount), Times.Once);
         }
 
         private IndexManager CreateInstance()

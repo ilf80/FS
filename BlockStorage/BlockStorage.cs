@@ -11,17 +11,17 @@ namespace FS.BlockStorage
 
         public ushort BlockSize => throw new NotImplementedException();
 
-        public Task<IOVoid> ReadBlock(int blockIndex, ref byte[] buffer)
+        public Task ReadBlock(uint blockIndex, byte[] buffer)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IOVoid> ReadBlock<T>(uint blockIndex, out T target) where T : struct
+        public Task ReadBlock<T>(uint blockIndex, out T target) where T : struct
         {
             throw new NotImplementedException();
         }
 
-        public Task<IOVoid> WriteBlock(int blockIndex, byte[] buffer)
+        public Task WriteBlock(uint blockIndex, byte[] buffer)
         {
             throw new NotImplementedException();
         }
@@ -58,7 +58,7 @@ namespace FS.BlockStorage
             return rawData;
         }
 
-        public Task<IOVoid> WriteBlock<T>(uint blockIndex, ref T target) where T : struct
+        public Task WriteBlock<T>(uint blockIndex, ref T target) where T : struct
         {
             throw new NotImplementedException();
         }
