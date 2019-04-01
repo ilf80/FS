@@ -37,14 +37,14 @@ namespace FS.SystemFile
                 return;
             }
 
-            var desiredBlocksLength = (totalBytes / Constants.BlockSize) + 1;
-            if (length < totalBytes)
+            var desiredBlocksLength = (totalBytes / Constants.BlockSize) + (totalBytes % Constants.BlockSize > 0 ? 1 : 0);
+            if (length > totalBytes)
             {
                 await indexManager.Shrink(desiredBlocksLength);
             }
             else
             {
-                var currentBlocksLength = (length / Constants.BlockSize) + 1;
+                var currentBlocksLength = (length / Constants.BlockSize) + (length % Constants.BlockSize > 0 ? 1 : 0);
                 await indexManager.Increase(desiredBlocksLength - currentBlocksLength);
             }
 
@@ -67,19 +67,19 @@ namespace FS.SystemFile
             {
                 throw new Exception("Out of bounds");
             }
-            indexManager.Lock();
+            //indexManager.Lock();
             try
             {
-                var blockCount = buffer.Length / Constants.BlockSize + 1;
-                var blockIds = await indexManager.GetBlocksForOffset(position, blockCount);
+                var blockCount = (buffer.Length / Constants.BlockSize) + (buffer.Length % Constants.BlockSize > 0 ? 1 : 0);
+                var blockIds = await indexManager.GetBlocksForOffset(position / Constants.BlockSize, blockCount);
 
                 var bufferOffset = 0;
+                var writeBuffer = new byte[Constants.BlockSize];
                 for (int blockIndex = 0; blockIndex < blockCount; blockIndex++)
                 {
                     if (blockIndex == 0)
                     {
-                        var writeBuffer = new byte[Constants.BlockSize];
-                        await storage.ReadBlock(blockIds[0], buffer);
+                        await storage.ReadBlock(blockIds[0], writeBuffer);
 
                         var offset = position % Constants.BlockSize;
                         for (int i = offset; i < Constants.BlockSize; i++)
@@ -90,8 +90,8 @@ namespace FS.SystemFile
                     }
                     else if (blockIndex == blockCount - 1)
                     {
-                        var writeBuffer = new byte[Constants.BlockSize];
-                        await storage.ReadBlock(blockIds[blockIndex], buffer);
+                        await storage.ReadBlock(blockIds[blockIndex], writeBuffer);
+
                         var bytesCount = buffer.Length - bufferOffset;
                         for (int i = 0; i < bytesCount; i++)
                         {
@@ -101,18 +101,18 @@ namespace FS.SystemFile
                     }
                     else
                     {
-                        var writeBuffer = new byte[Constants.BlockSize];
                         for (int i = 0; i < Constants.BlockSize; i++)
                         {
                             writeBuffer[i] = buffer[bufferOffset++];
                         }
+
                         await storage.WriteBlock(blockIds[blockIndex], writeBuffer);
                     }
                 }
             }
             finally
             {
-                indexManager.Release();
+                //indexManager.Release();
             }
         }
     }

@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Allocation\AllocationManager.cs" />
     <Compile Include="Allocation\IAllocationManager.cs" />
     <Compile Include="BlockStorage\BlockStorage.cs" />
     <Compile Include="Contracts\Contracts.cs" />

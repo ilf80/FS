@@ -1,19 +1,22 @@
 ﻿using FS.Contracts;
+using System;
 using System.Threading.Tasks;
 
 namespace FS.BlockStorage
 {
-    internal interface IBlockStorage
+    internal interface IBlockStorage: IDisposable
     {
         uint TotalSize { get; }
 
-        ushort BlockSize { get; }
+        int BlockSize { get; }
 
         Task ReadBlock(uint blockIndex, byte[] buffer);
 
         Task WriteBlock(uint blockIndex, byte[] buffer);
 
-        Task ReadBlock<T>(uint blockIndex, out T target) where T : struct;
+        //Task ReadBlock<T>(uint blockIndex, out T target) where T : struct;
+
+        Task<T> ReadBlock<T>(uint blockIndex) where T : struct;
 
         Task WriteBlock<T>(uint blockIndex, ref T target) where T : struct;
     }

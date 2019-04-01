@@ -45,14 +45,14 @@ namespace FS.Tests.Indexes
             var instance = CreateInstance();
             ListItemBlockIndexes indexes = new ListItemBlockIndexes { Indexes = new uint[MaxPageSize] };
             blockStorage
-                .Setup(x => x.ReadBlock(blockIndex, out indexes))
-                .Returns(() => Task.CompletedTask);
+                .Setup(x => x.ReadBlock<ListItemBlockIndexes>(blockIndex))
+                .Returns(() => Task.FromResult(indexes));
 
             // When
             await instance.Increase(1);
 
             // Then
-            blockStorage.Verify(x => x.ReadBlock(blockIndex, out indexes), Times.Once);
+            blockStorage.Verify(x => x.ReadBlock<ListItemBlockIndexes>(blockIndex), Times.Once);
         }
 
         [Test]
@@ -65,8 +65,8 @@ namespace FS.Tests.Indexes
             var instance = CreateInstance();
             ListItemBlockIndexes indexes = new ListItemBlockIndexes { Indexes = new uint[MaxPageSize] };
             blockStorage
-                .Setup(x => x.ReadBlock(blockIndex, out indexes))
-                .Returns(() => Task.CompletedTask);
+                .Setup(x => x.ReadBlock<ListItemBlockIndexes>(blockIndex))
+                .Returns(() => Task.FromResult(indexes));
 
             // When
             await instance.Increase(blockCount);

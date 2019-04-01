@@ -53,7 +53,7 @@ namespace FS.Indexes
 
             return taskFactory
                 .StartNew(EnsureLoaded)
-                .ContinueWith(t => ShrinkInternal(totalBlockCount));
+                .ContinueWith(t => ShrinkInternal(totalBlockCount), TaskContinuationOptions.ExecuteSynchronously);
         }
 
         public Task<uint[]> GetBlocksForOffset(int offset, int count)
@@ -83,7 +83,7 @@ namespace FS.Indexes
                 {
                     if (Interlocked.CompareExchange(ref indexLoaded, 1, 1) == 0)
                     {
-                        await Load();
+                        Load().Wait();
 
                         Interlocked.Exchange(ref indexLoaded, 1);
                     }
@@ -102,7 +102,7 @@ namespace FS.Indexes
                 extentionBlockIndex != Constants.EmptyBlockIndex;
                 extentionBlockIndex = GetNextExtentionBlockIndex(index))
             {
-                await storage.ReadBlock(extentionBlockIndex, out ListItemBlockIndexes blockIndexes);
+                ListItemBlockIndexes blockIndexes = await storage.ReadBlock<ListItemBlockIndexes>(extentionBlockIndex);
                 index = blockIndexes.Indexes;
                 indexList.AddLast(index);
             }
@@ -174,7 +174,7 @@ namespace FS.Indexes
                 var indexOfBock = indexPagesToRequest;
                 while (restItems > 0)
                 {
-                    for (int i = Constants.MaxItemsInIndexPage - restItems; i < Constants.MaxItemsInIndexPage; i++)
+                    for (int i = Constants.MaxItemsInIndexPage - restItems; i < Constants.MaxItemsInIndexPage && indexOfBock < blockCount - indexPagesToRequest; i++)
                     {
                         lastIndexesPage[i] = blocks[indexOfBock++];
                     }
@@ -226,15 +226,22 @@ namespace FS.Indexes
 
                 await allocationManager.Release(blocksToRelease);
 
-                var pageToClean = indexList.Skip(pageNo).First();
-                for(var i = 0; i < Constants.IndexPageSize; i++)
-                {
-                    pageToClean[i] = Constants.EmptyBlockIndex;
-                }
-                for (var i = 0; i < indexList.Count - pageNo; i++)
+                for (var i = 0; i < indexList.Count - pageNo - 1; i++)
                 {
                     indexList.RemoveLast();
                 }
+
+                var lastIndexesPage = indexList.Last.Value;
+                for (var i = pageOffset; i < Constants.IndexPageSize; i++)
+                {
+                    lastIndexesPage[i] = Constants.EmptyBlockIndex;
+                }
+
+                var blockIndex = indexList.Count == 1
+                    ? rootBlockIndex
+                    : indexList.Last.Previous.Value[Constants.IndexPageSize - 1];
+                var indexPage = new ListItemBlockIndexes { Indexes = lastIndexesPage };
+                await storage.WriteBlock(blockIndex, ref indexPage);
             }
             finally
             {
