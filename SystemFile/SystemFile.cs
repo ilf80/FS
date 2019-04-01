@@ -70,7 +70,7 @@ namespace FS.SystemFile
             //indexManager.Lock();
             try
             {
-                var blockCount = (buffer.Length / Constants.BlockSize) + (buffer.Length % Constants.BlockSize > 0 ? 1 : 0);
+                var blockCount = (buffer.Length / Constants.BlockSize) + (position % Constants.BlockSize > 0 ? 1 : 0);
                 var blockIds = await indexManager.GetBlocksForOffset(position / Constants.BlockSize, blockCount);
 
                 var bufferOffset = 0;

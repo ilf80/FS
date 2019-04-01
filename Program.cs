@@ -24,18 +24,18 @@ namespace FS
 
                 var indexManager = new IndexManager(taskFactory, allocationManager, blockStorage, 1);
                 //await indexManager.Increase(10);
-                //await indexManager.Shrink(5);
+                //await indexManager.Shrink(3);
 
-                var file = new SystemFile.SystemFile(blockStorage, indexManager, 0);
+                var file = new SystemFile.SystemFile(blockStorage, indexManager, 2000);
                 await file.SetSize(2000);
 
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     buffer[i] = (byte)(i / 2);
                 }
-                await file.Write(0, buffer);
-                await file.Write(512, buffer);
-                await file.Write(1023, buffer);
+                await file.Write(1, buffer);
+                //await file.Write(512, buffer);
+                //await file.Write(1023, buffer);
 
                 //file.Dispose();
                 blockStorage.Dispose();
