@@ -24,7 +24,7 @@ namespace FS
 
                 var indexManager = new IndexManager(taskFactory, allocationManager, blockStorage, 1);
                 //await indexManager.Increase(10);
-                //await indexManager.Shrink(3);
+                //await indexManager.Shrink(5);
 
                 var file = new SystemFile.SystemFile(blockStorage, indexManager, 2000);
                 await file.SetSize(2000);

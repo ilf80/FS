@@ -23,7 +23,7 @@ namespace FS.SystemFile
             this.length = length;
         }
 
-        public int Length => length;
+        public int Length => this.length;
 
         public void Dispose()
         {
@@ -32,23 +32,23 @@ namespace FS.SystemFile
 
         public async Task SetSize(int totalBytes)
         {
-            if (length == totalBytes)
+            if (this.length == totalBytes)
             {
                 return;
             }
 
             var desiredBlocksLength = (totalBytes / Constants.BlockSize) + (totalBytes % Constants.BlockSize > 0 ? 1 : 0);
-            if (length > totalBytes)
+            if (this.length > totalBytes)
             {
-                await indexManager.Shrink(desiredBlocksLength);
+                await this.indexManager.Shrink(desiredBlocksLength);
             }
             else
             {
-                var currentBlocksLength = (length / Constants.BlockSize) + (length % Constants.BlockSize > 0 ? 1 : 0);
-                await indexManager.Increase(desiredBlocksLength - currentBlocksLength);
+                var currentBlocksLength = (this.length / Constants.BlockSize) + (this.length % Constants.BlockSize > 0 ? 1 : 0);
+                await this.indexManager.Increase(desiredBlocksLength - currentBlocksLength);
             }
 
-            length = totalBytes;
+            this.length = totalBytes;
         }
 
         public Task Flush()
@@ -63,7 +63,7 @@ namespace FS.SystemFile
 
         public async Task Write(int position, byte[] buffer)
         {
-            if (position + buffer.Length >= length)
+            if (position + buffer.Length >= this.length)
             {
                 throw new Exception("Out of bounds");
             }
@@ -71,7 +71,7 @@ namespace FS.SystemFile
             try
             {
                 var blockCount = (buffer.Length / Constants.BlockSize) + (position % Constants.BlockSize > 0 ? 1 : 0);
-                var blockIds = await indexManager.GetBlocksForOffset(position / Constants.BlockSize, blockCount);
+                var blockIds = await this.indexManager.GetBlocksForOffset(position / Constants.BlockSize, blockCount);
 
                 var bufferOffset = 0;
                 var writeBuffer = new byte[Constants.BlockSize];
@@ -79,25 +79,25 @@ namespace FS.SystemFile
                 {
                     if (blockIndex == 0)
                     {
-                        await storage.ReadBlock(blockIds[0], writeBuffer);
+                        await this.storage.ReadBlock(blockIds[0], writeBuffer);
 
                         var offset = position % Constants.BlockSize;
                         for (int i = offset; i < Constants.BlockSize; i++)
                         {
                             writeBuffer[i] = buffer[bufferOffset++];
                         }
-                        await storage.WriteBlock(blockIds[0], writeBuffer);
+                        await this.storage.WriteBlock(blockIds[0], writeBuffer);
                     }
                     else if (blockIndex == blockCount - 1)
                     {
-                        await storage.ReadBlock(blockIds[blockIndex], writeBuffer);
+                        await this.storage.ReadBlock(blockIds[blockIndex], writeBuffer);
 
                         var bytesCount = buffer.Length - bufferOffset;
                         for (int i = 0; i < bytesCount; i++)
                         {
                             writeBuffer[i] = buffer[bufferOffset++];
                         }
-                        await storage.WriteBlock(blockIds[blockIndex], writeBuffer);
+                        await this.storage.WriteBlock(blockIds[blockIndex], writeBuffer);
                     }
                     else
                     {
@@ -106,7 +106,7 @@ namespace FS.SystemFile
                             writeBuffer[i] = buffer[bufferOffset++];
                         }
 
-                        await storage.WriteBlock(blockIds[blockIndex], writeBuffer);
+                        await this.storage.WriteBlock(blockIds[blockIndex], writeBuffer);
                     }
                 }
             }
