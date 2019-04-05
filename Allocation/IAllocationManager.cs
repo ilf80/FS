@@ -9,4 +9,11 @@ namespace FS.Allocattion
 
         Task<IOVoid> Release(uint[] blocks);
     }
+
+    internal interface IAllocationManager2
+    {
+        int[] Allocate(int blockCount);
+
+        void Release(int[] blocks);
+    }
 }

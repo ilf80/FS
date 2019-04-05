@@ -20,7 +20,22 @@ namespace FS.BlockStorage
 
         Task WriteBlock<T>(uint blockIndex, ref T target) where T : struct;
     }
-    
+
+    internal interface IBlockStorage2 : IDisposable
+    {
+        uint TotalSize { get; }
+
+        int BlockSize { get; }
+
+        void ReadBlock(int blockIndex, byte[] buffer);
+
+        void WriteBlock(int blockIndex, byte[] buffer);
+
+        void ReadBlock<T>(int blockIndex, T[] buffer) where T : struct;
+
+        void WriteBlock<T>(int blockIndex, T[] buffer) where T : struct;
+    }
+
 
     //internal interface IDirectoryManager
     //{
