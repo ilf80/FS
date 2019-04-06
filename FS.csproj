@@ -47,6 +47,7 @@
     <Compile Include="Allocation\IAllocationManager.cs" />
     <Compile Include="BlockStorage\BlockChain.cs" />
     <Compile Include="BlockStorage\BlockStorage.cs" />
+    <Compile Include="BlockStorage\BlockStorage2.cs" />
     <Compile Include="BlockStorage\IBlockChain.cs" />
     <Compile Include="Contracts\Contracts.cs" />
     <Compile Include="BlockStorage\IBlockStorage.cs" />

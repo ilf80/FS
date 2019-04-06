@@ -1,8 +1,10 @@
 ﻿using FS.Allocattion;
+using FS.BlockStorage;
 using FS.Contracts;
 using FS.Indexes;
+using System;
 using System.Threading.Tasks;
-using bs = FS.BlockStorage.BlockDevice;
+using bs = FS.BlockStorage.BlockStorage2;
 namespace FS
 {
     class Program
@@ -10,38 +12,32 @@ namespace FS
         static async Task Main(string[] args)
         {
             var taskFactory = new TaskFactory(TaskCreationOptions.None, TaskContinuationOptions.ExecuteSynchronously);
-            using (var blockStorage = new bs("TestFile.dat", taskFactory))
+            using (var blockStorage = new bs("TestFile.dat"))
             {
                 blockStorage.Open();
 
-                var buffer = new byte[Constants.BlockSize];
+                var buffer = new int[Constants.BlockSize];
+                for(var i = 0; i<buffer.Length; i++)
+                {
+                    buffer[i] = i;
+                }
                 //await blockStorage.WriteBlock(0, buffer);
                 //buffer[0] = 2;
                 //await blockStorage.WriteBlock(1, buffer);
                 //return;
 
-                var allocationManager = new AllocationManager();
+                var allocationManager = new AllocationManager2();
 
-                var indexManager = new IndexManager(taskFactory, allocationManager, blockStorage, 1);
-                //await indexManager.Increase(10);
-                //await indexManager.Shrink(5);
+                var indexBlockChainProvider = new IndexBlockChainProvier(1, allocationManager, blockStorage);
 
-                var file = new SystemFile.SystemFile(blockStorage, indexManager, 2000);
-                await file.SetSize(2000);
+                Console.WriteLine($"Index enty count : {indexBlockChainProvider.UsedEntryCount}");
 
-                for (int i = 0; i < buffer.Length; i++)
-                {
-                    buffer[i] = (byte)(i / 2);
-                }
-                await file.Write(1, buffer);
-                //await file.Write(512, buffer);
-                //await file.Write(1023, buffer);
+                var index = new Index<int>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), blockStorage);
 
-                //file.Dispose();
-                blockStorage.Dispose();
+                var blockChain = new BlockChain<int>(index);
+                //blockChain.Write(0, buffer);
 
-                //buffer[0] = 1;
-                //blockStorage.WriteBlock(0, buffer);
+                blockChain.Read(0, buffer);
             }
         }
     }

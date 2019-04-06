@@ -1,4 +1,6 @@
-﻿namespace FS.BlockStorage
+﻿using System;
+
+namespace FS.BlockStorage
 {
     internal sealed class BlockChain<T> : IBlockChain<T> where T : struct
     {
@@ -30,9 +32,7 @@
         {
             CheckOuOfBounds(position, buffer.Length);
 
-            var blockOffset = position % this.provider.BlockSize;
-            var blockCount = buffer.Length / this.provider.BlockSize + (blockOffset > 0 ? 1 : 0);
-
+            var blockCount = (position + buffer.Length - 1) / this.provider.BlockSize - position / this.provider.BlockSize + 1;
             var bufferOffset = 0;
             var blockBuffer = new T[this.provider.BlockSize];
             for (var blockIndex = position / this.provider.BlockSize; blockIndex < blockCount; blockIndex++)
@@ -45,7 +45,7 @@
                 if (blockIndex == 0)
                 {
                     var offset = position % this.provider.BlockSize;
-                    var entryCount = this.provider.BlockSize - offset;
+                    var entryCount = Math.Min(this.provider.BlockSize - offset, buffer.Length);
                     bufferOffset += TransferData(blockBuffer, buffer, offset, bufferOffset, entryCount, write);
                 }
                 else if (blockIndex == blockCount - 1)
@@ -78,7 +78,7 @@
                 targetIndex = array2Offset;
                 sourceIndex = array1Offset;
             }
-            for(var i = targetIndex; i < count; i++, sourceIndex++)
+            for (var i = 0; i < count; i++, targetIndex++, sourceIndex++)
             {
                 target[targetIndex] = source[sourceIndex];
             }

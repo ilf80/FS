@@ -31,7 +31,7 @@ namespace FS.SystemFile
 
         public void Read(int position, T[] buffer)
         {
-            throw new System.NotImplementedException();
+            this.blockChainProvider.Read(position, buffer);
         }
 
         public void SetBlockCont(int blockCount)
@@ -41,7 +41,7 @@ namespace FS.SystemFile
 
         public void Write(int position, T[] buffer)
         {
-            throw new System.NotImplementedException();
+            this.blockChain.Write(position, buffer);
         }
     }
 }

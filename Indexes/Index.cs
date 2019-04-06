@@ -1,4 +1,5 @@
 ﻿using FS.BlockStorage;
+using FS.Contracts;
 using System;
 using System.Runtime.InteropServices;
 
@@ -22,7 +23,7 @@ namespace FS.Indexes
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
-        public int BlockSize => this.storage.BlockSize;
+        public int BlockSize => this.storage.BlockSize / EntrySize;
 
         public int EntrySize => StructSize;
 
@@ -50,7 +51,7 @@ namespace FS.Indexes
 
         private int[] GetDataBlocks(int index, int entryCount)
         {
-            var blockCount = (entryCount * EntrySize) / BlockSize;
+            var blockCount = (entryCount * EntrySize) / this.storage.BlockSize;
             var blocks = new int[blockCount];
             this.indexBlockChain.Read(index, blocks);
             return blocks;

@@ -25,7 +25,7 @@ namespace FS.Indexes
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
-        public int BlockSize => Constants.MaxItemsInIndexPage * Constants.IndexEntrySize;
+        public int BlockSize => Constants.MaxItemsInIndexPage;
 
         public int EntrySize => Constants.IndexEntrySize;
 
