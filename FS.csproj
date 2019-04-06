@@ -53,6 +53,8 @@
     <Compile Include="Directory\IDirectoryManager.cs" />
     <Compile Include="Indexes\IIndex.cs" />
     <Compile Include="Indexes\IIndexManager.cs" />
+    <Compile Include="Indexes\Index.cs" />
+    <Compile Include="Indexes\IndexBlockChainProvier.cs" />
     <Compile Include="Indexes\IndexDescriptor.cs" />
     <Compile Include="Indexes\IndexList.cs" />
     <Compile Include="Indexes\IndexManager.cs" />
