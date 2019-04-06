@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Allocation\AllocationManager.cs" />
+    <Compile Include="Allocation\AllocationManager2.cs" />
     <Compile Include="Allocation\IAllocationManager.cs" />
     <Compile Include="BlockStorage\BlockChain.cs" />
     <Compile Include="BlockStorage\BlockStorage.cs" />

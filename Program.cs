@@ -14,9 +14,18 @@ namespace FS
             var taskFactory = new TaskFactory(TaskCreationOptions.None, TaskContinuationOptions.ExecuteSynchronously);
             using (var blockStorage = new bs("TestFile.dat"))
             {
+                //blockStorage.Open();
+                //var b = new byte[512];
+                //blockStorage.WriteBlock(0, b);
+                //blockStorage.WriteBlock(1, b);
+                //blockStorage.WriteBlock(2, b);
+                //blockStorage.Dispose();
+                //return;
+
                 blockStorage.Open();
 
-                var buffer = new int[512 + 512];
+
+                var buffer = new int[512 + 512 * 2];
                 for(var i = 0; i<buffer.Length; i++)
                 {
                     buffer[i] = i;
@@ -26,9 +35,13 @@ namespace FS
                 //await blockStorage.WriteBlock(1, buffer);
                 //return;
 
-                var allocationManager = new AllocationManager2();
+                Func<IAllocationManager2, IIndex<int>> allocationIndexFactory = (IAllocationManager2 m) => {
+                    IIndexBlockChainProvier allocationIndexProvider = new IndexBlockChainProvier(1, m, blockStorage);
+                    return new Index<int>(allocationIndexProvider, new BlockChain<int>(allocationIndexProvider), blockStorage, m);
+                };
+                var allocationManager = new AllocationManager2(allocationIndexFactory, blockStorage);
 
-                var indexBlockChainProvider = new IndexBlockChainProvier(1, allocationManager, blockStorage);
+                var indexBlockChainProvider = new IndexBlockChainProvier(2, allocationManager, blockStorage);
 
                 Console.WriteLine($"Index enty count : {indexBlockChainProvider.UsedEntryCount}");
 

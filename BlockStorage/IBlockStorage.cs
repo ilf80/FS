@@ -22,7 +22,7 @@ namespace FS.BlockStorage
 
     internal interface IBlockStorage2 : IDisposable
     {
-        uint TotalSize { get; }
+        long TotalSize { get; }
 
         int BlockSize { get; }
 
@@ -33,6 +33,8 @@ namespace FS.BlockStorage
         void ReadBlock<T>(int blockIndex, T[] buffer) where T : struct;
 
         void WriteBlock<T>(int blockIndex, T[] buffer) where T : struct;
+
+        int[] Extend(int blockCount);
     }
 
 

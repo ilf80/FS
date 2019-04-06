@@ -56,7 +56,7 @@ namespace FS.Indexes
                 return;
             }
 
-            if (count > this.provider.UsedEntryCount)
+            if (count > currentBlockCount)
             {
                 this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
 

@@ -61,6 +61,8 @@ namespace FS.Indexes
         {
             EnsureLoaded();
 
+            this.isDirty = true;
+
             Array.Copy(buffer, this.indexList.Skip(index).First(), buffer.Length);
         }
 

@@ -1,6 +1,7 @@
 ﻿using FS.Contracts;
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace FS.BlockStorage
@@ -10,7 +11,7 @@ namespace FS.BlockStorage
         private readonly string fileName;
         private FileStream fileStream;
 
-        public uint TotalSize => throw new NotImplementedException();
+        public long TotalSize => this.fileStream.Length;
 
         public int BlockSize => Constants.BlockSize;
 
@@ -64,6 +65,13 @@ namespace FS.BlockStorage
 
             this.fileStream.Position = blockIndex * Constants.BlockSize;
             this.fileStream.Write(tempBuffer, 0, Constants.BlockSize);
+        }
+
+        public int[] Extend(int blockCount)
+        {
+            var result = Enumerable.Range((int)(this.fileStream.Length / BlockSize) + 1, blockCount).ToArray();
+            this.fileStream.SetLength(this.fileStream.Length + blockCount * BlockSize);
+            return result;
         }
 
         public void Dispose()
