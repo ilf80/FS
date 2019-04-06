@@ -11,7 +11,7 @@ namespace FS.Allocattion
 
         public Task<uint[]> Allocate(int blockCount)
         {
-            return Task.FromResult(Enumerable.Range(0, blockCount).Select(x => (uint)Interlocked.Increment(ref block)).ToArray());
+            return Task.FromResult(Enumerable.Range(0, blockCount).Select(x => (uint)Interlocked.Increment(ref this.block)).ToArray());
         }
 
         public Task<IOVoid> Release(uint[] blocks)

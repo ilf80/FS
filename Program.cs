@@ -16,7 +16,7 @@ namespace FS
             {
                 blockStorage.Open();
 
-                var buffer = new int[Constants.BlockSize];
+                var buffer = new int[512 + 512];
                 for(var i = 0; i<buffer.Length; i++)
                 {
                     buffer[i] = i;
@@ -32,12 +32,15 @@ namespace FS
 
                 Console.WriteLine($"Index enty count : {indexBlockChainProvider.UsedEntryCount}");
 
-                var index = new Index<int>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), blockStorage);
+                var index = new Index<int>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), blockStorage, allocationManager);
+                index.SetSizeInBlocks(buffer.Length * 4 / 512);
 
                 var blockChain = new BlockChain<int>(index);
-                //blockChain.Write(0, buffer);
+                blockChain.Write(0, buffer);
 
-                blockChain.Read(0, buffer);
+                //blockChain.Read(0, buffer);
+
+                index.Flush();
             }
         }
     }

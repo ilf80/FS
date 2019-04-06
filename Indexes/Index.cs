@@ -1,4 +1,5 @@
-﻿using FS.BlockStorage;
+﻿using FS.Allocattion;
+using FS.BlockStorage;
 using FS.Contracts;
 using System;
 using System.Runtime.InteropServices;
@@ -12,15 +13,18 @@ namespace FS.Indexes
         private readonly IIndexBlockChainProvier provider;
         private readonly IBlockChain<int> indexBlockChain;
         private readonly IBlockStorage2 storage;
+        private readonly IAllocationManager2 allocationManager;
 
         public Index(
             IIndexBlockChainProvier provider,
             IBlockChain<int> blockChain,
-            IBlockStorage2 storage)
+            IBlockStorage2 storage,
+            IAllocationManager2 allocationManager)
         {
             this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
             this.indexBlockChain = blockChain ?? throw new ArgumentNullException(nameof(blockChain));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
         }
 
         public int BlockSize => this.storage.BlockSize / EntrySize;
@@ -46,7 +50,32 @@ namespace FS.Indexes
 
         public void SetSizeInBlocks(int count)
         {
-            this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
+            var currentBlockCount = this.provider.UsedEntryCount;
+            if (count == currentBlockCount)
+            {
+                return;
+            }
+
+            if (count > this.provider.UsedEntryCount)
+            {
+                this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
+
+                var allocateBlockCount = count - currentBlockCount;
+                var blocks = this.allocationManager.Allocate(allocateBlockCount);
+                this.indexBlockChain.Write(currentBlockCount, blocks);
+            }
+            else
+            {
+                var releaseBlockCount = currentBlockCount - count;
+                var blocks = new int[releaseBlockCount];
+                this.indexBlockChain.Read(currentBlockCount - releaseBlockCount, blocks);
+                this.allocationManager.Release(blocks);
+
+                blocks = new int[releaseBlockCount];
+                this.indexBlockChain.Write(currentBlockCount, blocks);
+
+                this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
+            }
         }
 
         private int[] GetDataBlocks(int index, int entryCount)

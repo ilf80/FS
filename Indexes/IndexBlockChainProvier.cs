@@ -68,6 +68,8 @@ namespace FS.Indexes
         {
             EnsureLoaded();
 
+            count = Math.Max(count, 1);
+
             if (this.indexList.Count == count)
             {
                 return;
