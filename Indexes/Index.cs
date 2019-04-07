@@ -72,7 +72,7 @@ namespace FS.Indexes
                 this.allocationManager.Release(blocks);
 
                 blocks = new int[releaseBlockCount];
-                this.indexBlockChain.Write(currentBlockCount, blocks);
+                this.indexBlockChain.Write(currentBlockCount - releaseBlockCount, blocks);
 
                 this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
             }

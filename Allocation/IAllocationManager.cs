@@ -13,6 +13,8 @@ namespace FS.Allocattion
 
     internal interface IAllocationManager2 : IFlushable
     {
+        int ReleasedBlockCount { get; }
+
         int[] Allocate(int blockCount);
 
         void Release(int[] blocks);

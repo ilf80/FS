@@ -26,7 +26,8 @@ namespace FS.BlockStorage
             this.fileStream = new FileStream(this.fileName,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                FileShare.None,
+                //FileShare.None,
+                FileShare.Read,
                 Constants.BlockSize,
                 FileOptions.Asynchronous | FileOptions.RandomAccess);
         }

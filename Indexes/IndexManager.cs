@@ -4,11 +4,20 @@ using FS.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace FS.Indexes
 {
+    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 512)]
+    internal struct ListItemBlockIndexes
+    {
+        [FieldOffset(0)]
+        [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U4, SizeConst = 128)]
+        public uint[] Indexes;
+    }
+
     internal class IndexManager : IIndexManager
     {
         private readonly TaskFactory taskFactory;

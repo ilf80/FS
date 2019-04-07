@@ -39,7 +39,7 @@ namespace FS
                     IIndexBlockChainProvier allocationIndexProvider = new IndexBlockChainProvier(1, m, blockStorage);
                     return new Index<int>(allocationIndexProvider, new BlockChain<int>(allocationIndexProvider), blockStorage, m);
                 };
-                var allocationManager = new AllocationManager2(allocationIndexFactory, blockStorage);
+                var allocationManager = new AllocationManager2(allocationIndexFactory, blockStorage, 0);
 
                 var indexBlockChainProvider = new IndexBlockChainProvier(2, allocationManager, blockStorage);
 
@@ -51,9 +51,12 @@ namespace FS
                 var blockChain = new BlockChain<int>(index);
                 blockChain.Write(0, buffer);
 
+                index.SetSizeInBlocks(buffer.Length * 3 / 512);
+
                 //blockChain.Read(0, buffer);
 
                 index.Flush();
+                allocationManager.Flush();
             }
         }
     }
