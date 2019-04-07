@@ -53,6 +53,8 @@
     <Compile Include="Contracts\Contracts.cs" />
     <Compile Include="BlockStorage\IBlockStorage.cs" />
     <Compile Include="Directory\IDirectoryManager.cs" />
+    <Compile Include="FileManager.cs" />
+    <Compile Include="FileOffsetAttribute.cs" />
     <Compile Include="Indexes\IIndex.cs" />
     <Compile Include="Indexes\IIndexManager.cs" />
     <Compile Include="Indexes\Index.cs" />
@@ -66,6 +68,7 @@
     <Compile Include="SystemFile\ISystemFile.cs" />
     <Compile Include="SystemFile\SystemFile.cs" />
     <Compile Include="Utils\Guard.cs" />
+    <Compile Include="Utils\Helpers.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

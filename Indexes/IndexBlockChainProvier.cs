@@ -44,9 +44,9 @@ namespace FS.Indexes
             {
                 EnsureLoaded();
                 return (this.indexList.Count - 1) * Constants.MaxItemsInIndexPage
-                    + this.indexList.Count > 0 
+                    + (this.indexList.Count > 0 
                     ? this.indexList.Last.Value.Count(x => x != Constants.EmptyBlockIndex)
-                    : 0;
+                    : 0);
             }
         }
 
@@ -85,7 +85,7 @@ namespace FS.Indexes
                 foreach(var blockId in blocks)
                 {
                     SetNextExtentionBlockIndex(this.indexList.Last.Value, blockId);
-                    this.indexList.AddLast(new int[Constants.IndexEntrySize]);
+                    this.indexList.AddLast(new int[Constants.IndexPageSize]);
                 }
             }
             else

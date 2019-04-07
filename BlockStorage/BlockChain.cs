@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FS.Utils;
+using System;
 
 namespace FS.BlockStorage
 {
@@ -35,20 +36,21 @@ namespace FS.BlockStorage
             var blockCount = (position + buffer.Length - 1) / this.provider.BlockSize - position / this.provider.BlockSize + 1;
             var bufferOffset = 0;
             var blockBuffer = new T[this.provider.BlockSize];
-            for (var blockIndex = position / this.provider.BlockSize; blockIndex < blockCount; blockIndex++)
+            var blockIndex = Helpers.ModBaseWithFloor(position, this.provider.BlockSize);
+            for (var iterationIndex = 0; iterationIndex < blockCount; iterationIndex++, blockIndex++)
             {
-                if (blockIndex == 0 || blockIndex == blockCount - 1 || !write)
+                if (iterationIndex == 0 || iterationIndex == blockCount - 1 || !write)
                 {
                     this.provider.Read(blockIndex, blockBuffer);
                 }
 
-                if (blockIndex == 0)
+                if (iterationIndex == 0)
                 {
                     var offset = position % this.provider.BlockSize;
                     var entryCount = Math.Min(this.provider.BlockSize - offset, buffer.Length);
                     bufferOffset += TransferData(blockBuffer, buffer, offset, bufferOffset, entryCount, write);
                 }
-                else if (blockIndex == blockCount - 1)
+                else if (iterationIndex == blockCount - 1)
                 {
                     var entryCount = buffer.Length - bufferOffset;
                     bufferOffset += TransferData(blockBuffer, buffer, 0, bufferOffset, entryCount, write);

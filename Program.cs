@@ -1,12 +1,20 @@
 ﻿using FS.Allocattion;
 using FS.BlockStorage;
 using FS.Contracts;
+using FS.Directory;
 using FS.Indexes;
 using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using bs = FS.BlockStorage.BlockStorage2;
 namespace FS
 {
+    [StructLayout(LayoutKind.Sequential, Size = 512)]
+    struct DirectoryHeaderRoot
+    {
+        public DirectoryHeader Header;
+    }
+
     class Program
     {
         static async Task Main(string[] args)
@@ -19,44 +27,90 @@ namespace FS
                 //blockStorage.WriteBlock(0, b);
                 //blockStorage.WriteBlock(1, b);
                 //blockStorage.WriteBlock(2, b);
+                //blockStorage.WriteBlock(3, b);
+                //blockStorage.WriteBlock(4, b);
+
+                //var fsHeader = new FSHeader
+                //{
+                //    AllocationBlock = 1,
+                //    RootDirectoryBlock = 2,
+                //    FreeBlockCount = 0
+                //};
+                //blockStorage.WriteBlock(0, new[] { fsHeader });
+
+                //b[0] = 3;
+                //blockStorage.WriteBlock(2, b);
+
+                //var fsRoot = new DirectoryHeader
+                //{
+                //    FirstEmptyItemOffset = 1,
+                //    ItemsCount = 0,
+                //    LastNameOffset = 0,
+                //    NameBlockIndex = 4
+                //};
+                //blockStorage.WriteBlock(3, new[] { new DirectoryHeaderRoot { Header = fsRoot } });
                 //blockStorage.Dispose();
                 //return;
 
                 blockStorage.Open();
 
+                var header = new FSHeader[1];
+                blockStorage.ReadBlock(0, header);
 
-                var buffer = new int[512 + 512 * 2];
-                for(var i = 0; i<buffer.Length; i++)
-                {
-                    buffer[i] = i;
-                }
+
+                //var buffer = new int[512 + 512 * 2];
+                //for(var i = 0; i<buffer.Length; i++)
+                //{
+                //    buffer[i] = i;
+                //}
                 //await blockStorage.WriteBlock(0, buffer);
                 //buffer[0] = 2;
                 //await blockStorage.WriteBlock(1, buffer);
                 //return;
 
                 Func<IAllocationManager2, IIndex<int>> allocationIndexFactory = (IAllocationManager2 m) => {
-                    IIndexBlockChainProvier allocationIndexProvider = new IndexBlockChainProvier(1, m, blockStorage);
+                    IIndexBlockChainProvier allocationIndexProvider = new IndexBlockChainProvier(header[0].AllocationBlock, m, blockStorage);
                     return new Index<int>(allocationIndexProvider, new BlockChain<int>(allocationIndexProvider), blockStorage, m);
                 };
-                var allocationManager = new AllocationManager2(allocationIndexFactory, blockStorage, 0);
+                var allocationManager = new AllocationManager2(allocationIndexFactory, blockStorage, header[0].FreeBlockCount);
 
-                var indexBlockChainProvider = new IndexBlockChainProvier(2, allocationManager, blockStorage);
+                //var indexBlockChainProvider = new IndexBlockChainProvier(header[0].RootDirectoryBlock, allocationManager, blockStorage);
+                //var index = new Index<DirectoryItem>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), blockStorage, allocationManager);
 
-                Console.WriteLine($"Index enty count : {indexBlockChainProvider.UsedEntryCount}");
+                //index.SetSizeInBlocks(1);
+                //index.Flush();
 
-                var index = new Index<int>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), blockStorage, allocationManager);
-                index.SetSizeInBlocks(buffer.Length * 4 / 512);
+                var rootDir = DirectoryManager.Read(header[0].RootDirectoryBlock, blockStorage, allocationManager);
 
-                var blockChain = new BlockChain<int>(index);
-                blockChain.Write(0, buffer);
+                //rootDir.CreateDirectory("Test");
 
-                index.SetSizeInBlocks(buffer.Length * 3 / 512);
+                //for (var i = 0; i < 100000; i++)
+                //{
+                //    rootDir.CreateDirectory("Dir " + i);
+                //}
+
+                //rootDir.CreateDirectory(new string('0', 10123));
+
+                //rootDir.CreateDirectory(new string('1', 250000000));
+
+                foreach (var entry in rootDir.GetDirectoryEntries())
+                {
+                    Console.WriteLine($"Enrty: Name {entry.Name}, Size {entry.Size}");
+                }
+
+
+                //rootDir.CreateDirectory("Test1");
+
 
                 //blockChain.Read(0, buffer);
 
-                index.Flush();
+                //index.Flush();
+
+                rootDir.Flush();
                 allocationManager.Flush();
+
+                header[0].FreeBlockCount = allocationManager.ReleasedBlockCount;
+                blockStorage.WriteBlock(0, header);
             }
         }
     }

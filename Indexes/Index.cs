@@ -58,7 +58,7 @@ namespace FS.Indexes
 
             if (count > currentBlockCount)
             {
-                this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
+                this.provider.SetSizeInBlocks(count / this.provider.BlockSize + (count % this.provider.BlockSize == 0 ? 0 : 1));
 
                 var allocateBlockCount = count - currentBlockCount;
                 var blocks = this.allocationManager.Allocate(allocateBlockCount);
@@ -74,7 +74,7 @@ namespace FS.Indexes
                 blocks = new int[releaseBlockCount];
                 this.indexBlockChain.Write(currentBlockCount - releaseBlockCount, blocks);
 
-                this.provider.SetSizeInBlocks(count / this.provider.BlockSize);
+                this.provider.SetSizeInBlocks(count / this.provider.BlockSize + count % this.provider.BlockSize == 0 ? 0 : 1);
             }
         }
 
