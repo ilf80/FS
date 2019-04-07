@@ -73,7 +73,18 @@ namespace FS.Directory
     {
         IDirectory CreateDirectory(string name);
 
+        IFile OpenFile(string name);
+
         IDirectoryEntryInfo[] GetDirectoryEntries();
+    }
+
+    internal interface IFile : IFlushable
+    {
+        void Read(int position, byte[] buffer);
+
+        void Write(int position, byte[] buffer);
+
+        void SetSize(int size);
     }
 
     public interface IDirectoryEntryInfo
@@ -87,6 +98,8 @@ namespace FS.Directory
         DateTime Updated { get; }
 
         string Name { get; }
+
+        int BlockId { get; }
     }
 
     internal sealed class DirectoryEntryInfo : IDirectoryEntryInfo
@@ -98,6 +111,7 @@ namespace FS.Directory
             Created = DateTime.FromBinary(header.Created);
             Updated = DateTime.FromBinary(header.Updated);
             Name = name;
+            BlockId = header.BlockIndex;
         }
 
         public bool IsDirectory { get; private set; }
@@ -109,6 +123,8 @@ namespace FS.Directory
         public DateTime Updated { get; private set; }
 
         public string Name { get; private set; }
+
+        public int BlockId { get; private set; }
     }
 
     internal class DirectoryManager: IDirectory
@@ -195,6 +211,25 @@ namespace FS.Directory
                 result.Add(new DirectoryEntryInfo(entry, new string(nameBuffer)));
             }
             return result.ToArray();
+        }
+
+        public IFile OpenFile(string name)
+        {
+            var entries = GetDirectoryEntries();
+            var entry = entries.FirstOrDefault(x => x.Name == name);
+            if (entry != null)
+            {
+                return new File(this.storage, this.allocationManager, entry.BlockId);
+            }
+
+            var blocks = this.allocationManager.Allocate(1);
+            AddEntry(blocks[0], name, DirectoryFlags.File);
+
+            var result = new File(this.storage, this.allocationManager, blocks[0]);
+            result.SetSize(1);
+            result.Flush();
+
+            return result;
         }
 
         public static IDirectory Read(
@@ -299,6 +334,49 @@ namespace FS.Directory
 
             this.lastNameOffset += name.Length + 1;
             return result;
+        }
+    }
+
+    internal sealed class File : IFile
+    {
+        private readonly IBlockStorage2 storage;
+        private readonly IAllocationManager2 allocationManager;
+        private readonly int blockId;
+        private readonly BlockChain<byte> blockChain;
+        private readonly Index<byte> index;
+
+        public File(
+            IBlockStorage2 storage,
+            IAllocationManager2 allocationManager,
+            int blockId)
+        {
+            this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
+            this.blockId = blockId;
+
+            var provider = new IndexBlockChainProvier(blockId, this.allocationManager, this.storage);
+            var indexBlockChain = new BlockChain<int>(provider);
+            this.index = new Index<byte>(provider, indexBlockChain, this.storage, this.allocationManager);
+            this.blockChain = new BlockChain<byte>(this.index);
+        }
+        public void Flush()
+        {
+            this.index.Flush();
+        }
+
+        public void Read(int position, byte[] buffer)
+        {
+            this.blockChain.Read(position, buffer);
+        }
+
+        public void SetSize(int size)
+        {
+            this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(size, this.index.BlockSize));
+        }
+
+        public void Write(int position, byte[] buffer)
+        {
+            this.blockChain.Write(position, buffer);
         }
     }
 }
