@@ -107,13 +107,13 @@ namespace FS.Directory
             var entry = entries.FirstOrDefault(x => x.Name == name);
             if (entry != null)
             {
-                return new File(this.storage, this.allocationManager, entry.BlockId);
+                return new File(this.storage, this.allocationManager, entry.BlockId, this.index.BlockId, entry.Size);
             }
 
             var blocks = this.allocationManager.Allocate(1);
             AddEntry(blocks[0], name, DirectoryFlags.File);
 
-            var result = new File(this.storage, this.allocationManager, blocks[0]);
+            var result = new File(this.storage, this.allocationManager, blocks[0], this.index.BlockId, 0);
             result.SetSize(1);
             result.Flush();
 
@@ -125,12 +125,12 @@ namespace FS.Directory
             IBlockStorage storage,
             IAllocationManager allocationManager)
         {
-            var indexBlockChainProvider = new IndexBlockProvier(blockIndex, allocationManager, storage);
-            var index = new Index<DirectoryItem>(indexBlockChainProvider, new BlockStream<int>(indexBlockChainProvider), storage, allocationManager);
-            var indexBlockChain = new BlockStream<DirectoryItem>(index);
+            var indexBlockProvider = new IndexBlockProvier(blockIndex, allocationManager, storage);
+            var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), storage, allocationManager);
+            var indexStream = new BlockStream<DirectoryItem>(index);
 
             var buffer = new DirectoryItem[1];
-            indexBlockChain.Read(0, buffer);
+            indexStream.Read(0, buffer);
             var header = buffer[0].Header;
 
             return new DirectoryManager(index, storage, allocationManager, header);
@@ -140,6 +140,35 @@ namespace FS.Directory
         {
             this.index.Flush();
             this.nameIndex.Flush();
+        }
+
+        public void Dispose()
+        {
+        }
+
+        public void UpdateEntry(int blockId, IDirectoryEntryInfoOverrides overrides)
+        {
+            var buffer = new DirectoryItem[this.itemsCount];
+            this.blockChain.Read(1, buffer);
+
+            for(var i = 0; i < buffer.Length; i++)
+            {
+                var entry = buffer[i];
+                if (entry.Entry.BlockIndex == blockId)
+                {
+                    ApplyOverrides(ref entry.Entry, overrides);
+                    this.blockChain.Write(i + 1, new[] { entry });
+                    return;
+                }
+            }
+
+            throw new Exception("Entry not found");
+        }
+
+        private void ApplyOverrides(ref DirectoryEntry entry, IDirectoryEntryInfoOverrides overrides)
+        {
+            entry.Size = overrides.Size ?? entry.Size;
+            entry.Updated = overrides.Updated.HasValue ? overrides.Updated.Value.Ticks : entry.Updated;
         }
 
         private void AddEntry(int blockId, string name, DirectoryFlags flags)

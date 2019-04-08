@@ -53,6 +53,7 @@
     <Compile Include="BlockAccess\IBlockStorage.cs" />
     <Compile Include="Directory\DirectoryEntry.cs" />
     <Compile Include="Directory\DirectoryEntryInfo.cs" />
+    <Compile Include="Directory\DirectoryEntryInfoOverrides.cs" />
     <Compile Include="Directory\DirectoryFlags.cs" />
     <Compile Include="Directory\DirectoryHeader.cs" />
     <Compile Include="Directory\DirectoryItem.cs" />
@@ -60,6 +61,7 @@
     <Compile Include="Directory\File.cs" />
     <Compile Include="Directory\IDirectory.cs" />
     <Compile Include="Directory\IDirectoryEntryInfo.cs" />
+    <Compile Include="Directory\IDirectoryEntryInfoOverrides.cs" />
     <Compile Include="Directory\IFile.cs" />
     <Compile Include="FileManager.cs" />
     <Compile Include="Contracts\IFlushable.cs" />

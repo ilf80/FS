@@ -89,7 +89,7 @@ namespace FS
                 //}
 
                 var file = rootDir.OpenFile("Test File 3");
-                //file.SetSize(512);
+                //file.SetSize(123);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
                 //file.Flush();
 
@@ -101,9 +101,9 @@ namespace FS
                     Console.Write(buffer[i].ToString("X2"));
                     Console.Write(' ');
                 }
-                //file.SetSize(512);
+                //file.SetSize(123);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
-                //file.Flush();
+                ////file.Flush();
 
                 //rootDir.CreateDirectory(new string('0', 10123));
 
@@ -111,7 +111,7 @@ namespace FS
 
                 foreach (var entry in rootDir.GetDirectoryEntries())
                 {
-                    Console.WriteLine($"Enrty: Name {entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}");
+                    Console.WriteLine($"Enrty: Name {entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
                 }
 
 

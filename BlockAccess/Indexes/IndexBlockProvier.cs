@@ -23,6 +23,8 @@ namespace FS.BlockAccess.Indexes
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
+        public int BlockId => this.rootBlockIndex;
+
         public int BlockSize => Constants.MaxItemsInIndexPage;
 
         public int EntrySize => Constants.IndexEntrySize;

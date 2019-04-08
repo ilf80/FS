@@ -25,6 +25,8 @@ namespace FS.BlockAccess.Indexes
             this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
         }
 
+        public int BlockId => this.provider.BlockId;
+
         public int BlockSize => this.storage.BlockSize / EntrySize;
 
         public int EntrySize => StructSize;
