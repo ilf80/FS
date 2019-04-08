@@ -1,5 +1,5 @@
-﻿using FS.BlockChain;
-using FS.Contracts;
+﻿using FS.BlockAccess;
+using FS.BlockAccess.Indexes;
 using System;
 using System.Linq;
 using System.Threading;
@@ -9,7 +9,7 @@ namespace FS.Allocattion
     internal class AllocationManager : IAllocationManager
     {
         private readonly IIndex<int> index;
-        private readonly IBlockChain<int> blockChain;
+        private readonly IBlockStream<int> blockChain;
         private readonly IBlockStorage storage;
         private int releasedBlockCount;
 
@@ -25,7 +25,7 @@ namespace FS.Allocattion
 
             this.index = indexFacory(this);
 
-            this.blockChain = new BlockChain<int>(this.index);
+            this.blockChain = new BlockStream<int>(this.index);
             this.storage = storage ?? throw new System.ArgumentNullException(nameof(storage));
             this.releasedBlockCount = freeSpaceBlocksCount;
         }

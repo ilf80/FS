@@ -1,6 +1,6 @@
-﻿namespace FS.BlockChain
+﻿namespace FS.BlockAccess
 {
-    internal interface IBlockChainProvider<T> where T : struct
+    internal interface IBlockProvider<T> where T : struct
     {
         int BlockSize { get; }
 

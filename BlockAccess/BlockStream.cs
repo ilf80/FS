@@ -1,23 +1,17 @@
 ﻿using FS.Utils;
 using System;
 
-namespace FS.BlockChain
+namespace FS.BlockAccess
 {
-    internal sealed class BlockChain<T> : IBlockChain<T> where T : struct
+    internal sealed class BlockStream<T> : IBlockStream<T> where T : struct
     {
-        private readonly IBlockChainProvider<T> provider;
-
-        public BlockChain(
-            IBlockChainProvider<T> provider)
+        public BlockStream(
+            IBlockProvider<T> provider)
         {
-            this.provider = provider ?? throw new System.ArgumentNullException(nameof(provider));
+            Provider = provider ?? throw new System.ArgumentNullException(nameof(provider));
         }
 
-        public void GetOffset(int position, out int blockIndex, out int blockOffset)
-        {
-            blockIndex = position / this.provider.BlockSize;
-            blockOffset = position % this.provider.BlockSize;
-        }
+        public IBlockProvider<T> Provider { get; private set; }
 
         public void Read(int position, T[] buffer)
         {
@@ -33,21 +27,21 @@ namespace FS.BlockChain
         {
             CheckOuOfBounds(position, buffer.Length);
 
-            var blockCount = (position + buffer.Length - 1) / this.provider.BlockSize - position / this.provider.BlockSize + 1;
+            var blockCount = (position + buffer.Length - 1) / Provider.BlockSize - position / Provider.BlockSize + 1;
             var bufferOffset = 0;
-            var blockBuffer = new T[this.provider.BlockSize];
-            var blockIndex = Helpers.ModBaseWithFloor(position, this.provider.BlockSize);
+            var blockBuffer = new T[Provider.BlockSize];
+            var blockIndex = Helpers.ModBaseWithFloor(position, Provider.BlockSize);
             for (var iterationIndex = 0; iterationIndex < blockCount; iterationIndex++, blockIndex++)
             {
                 if (iterationIndex == 0 || iterationIndex == blockCount - 1 || !write)
                 {
-                    this.provider.Read(blockIndex, blockBuffer);
+                    Provider.Read(blockIndex, blockBuffer);
                 }
 
                 if (iterationIndex == 0)
                 {
-                    var offset = position % this.provider.BlockSize;
-                    var entryCount = Math.Min(this.provider.BlockSize - offset, buffer.Length);
+                    var offset = position % Provider.BlockSize;
+                    var entryCount = Math.Min(Provider.BlockSize - offset, buffer.Length);
                     bufferOffset += TransferData(blockBuffer, buffer, offset, bufferOffset, entryCount, write);
                 }
                 else if (iterationIndex == blockCount - 1)
@@ -57,12 +51,12 @@ namespace FS.BlockChain
                 }
                 else
                 {
-                    bufferOffset += TransferData(blockBuffer, buffer, 0, bufferOffset, this.provider.BlockSize, write);
+                    bufferOffset += TransferData(blockBuffer, buffer, 0, bufferOffset, Provider.BlockSize, write);
                 }
 
                 if (write)
                 {
-                    this.provider.Write(blockIndex, blockBuffer);
+                    Provider.Write(blockIndex, blockBuffer);
                 }
             }
         }

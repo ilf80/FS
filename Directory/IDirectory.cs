@@ -1,10 +1,10 @@
-﻿using FS.Contracts;
+﻿using FS.BlockAccess;
 
 namespace FS.Directory
 {
     internal interface IDirectory : IFlushable
     {
-        IDirectory CreateDirectory(string name);
+        IDirectory OpenDirectory(string name);
 
         IFile OpenFile(string name);
 

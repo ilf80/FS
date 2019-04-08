@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace FS.BlockChain
+namespace FS.BlockAccess
 {
     internal interface IBlockStorage : IDisposable
     {

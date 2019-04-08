@@ -1,6 +1,6 @@
 ﻿using FS.Allocattion;
-using FS.BlockChain;
-using FS.Contracts;
+using FS.BlockAccess;
+using FS.BlockAccess.Indexes;
 using FS.Utils;
 using System;
 using System.Collections.Generic;
@@ -13,9 +13,9 @@ namespace FS.Directory
         private readonly IIndex<DirectoryItem> index;
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
-        private readonly BlockChain<DirectoryItem> blockChain;
+        private readonly BlockStream<DirectoryItem> blockChain;
         private readonly Index<short> nameIndex;
-        private BlockChain<short> nameIndexBlockChain;
+        private BlockStream<short> nameIndexBlockChain;
         private int nameBlockIndex;
         private int firstEmptyItemOffset;
         private int itemsCount;
@@ -30,25 +30,32 @@ namespace FS.Directory
             this.index = index ?? throw new ArgumentNullException(nameof(index));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
             this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
-            this.blockChain = new BlockChain<DirectoryItem>(index);
+            this.blockChain = new BlockStream<DirectoryItem>(index);
             this.nameBlockIndex = header.NameBlockIndex;
 
-            var nameIndexProvider = new IndexBlockChainProvier(this.nameBlockIndex, this.allocationManager, this.storage);
-            var nameIndexBlockChain = new BlockChain<int>(nameIndexProvider);
+            var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.allocationManager, this.storage);
+            var nameIndexBlockChain = new BlockStream<int>(nameIndexProvider);
             this.nameIndex = new Index<short>(nameIndexProvider, nameIndexBlockChain, this.storage, this.allocationManager);
-            this.nameIndexBlockChain = new BlockChain<short>(this.nameIndex);
+            this.nameIndexBlockChain = new BlockStream<short>(this.nameIndex);
 
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
             this.itemsCount = header.ItemsCount;
             this.lastNameOffset = header.LastNameOffset;
         }
 
-        public IDirectory CreateDirectory(string name)
+        public IDirectory OpenDirectory(string name)
         {
+            var entries = GetDirectoryEntries();
+            var entry = entries.FirstOrDefault(x => x.Name == name);
+            if (entry != null)
+            {
+                return ReadDirectory(entry.BlockId, this.storage, this.allocationManager);
+            }
+
             var blocks = this.allocationManager.Allocate(2);
 
-            var directoryIndexProvider = new IndexBlockChainProvier(blocks[1], this.allocationManager, this.storage);
-            var directoryIndexBlockChain = new BlockChain<int>(directoryIndexProvider);
+            var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.allocationManager, this.storage);
+            var directoryIndexBlockChain = new BlockStream<int>(directoryIndexProvider);
             var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.storage, this.allocationManager);
             directoryIndex.SetSizeInBlocks(1);
             directoryIndex.Flush();
@@ -113,14 +120,14 @@ namespace FS.Directory
             return result;
         }
 
-        public static IDirectory Read(
+        public static IDirectory ReadDirectory(
             int blockIndex, 
             IBlockStorage storage,
             IAllocationManager allocationManager)
         {
-            var indexBlockChainProvider = new IndexBlockChainProvier(blockIndex, allocationManager, storage);
-            var index = new Index<DirectoryItem>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), storage, allocationManager);
-            var indexBlockChain = new BlockChain<DirectoryItem>(index);
+            var indexBlockChainProvider = new IndexBlockProvier(blockIndex, allocationManager, storage);
+            var index = new Index<DirectoryItem>(indexBlockChainProvider, new BlockStream<int>(indexBlockChainProvider), storage, allocationManager);
+            var indexBlockChain = new BlockStream<DirectoryItem>(index);
 
             var buffer = new DirectoryItem[1];
             indexBlockChain.Read(0, buffer);

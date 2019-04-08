@@ -1,10 +1,10 @@
-﻿using FS.Contracts;
+﻿using FS.BlockAccess;
 using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace FS.BlockChain
+namespace FS.BlockAccess
 {
     internal class BlockStorage : IBlockStorage
     {
@@ -42,12 +42,17 @@ namespace FS.BlockChain
         {
             var tempBuffer = new byte[Marshal.SizeOf<T>() * buffer.Length];
             GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            try
+            {
+                this.fileStream.Position = blockIndex * Constants.BlockSize;
+                this.fileStream.Read(tempBuffer, 0, Constants.BlockSize);
 
-            this.fileStream.Position = blockIndex * Constants.BlockSize;
-            this.fileStream.Read(tempBuffer, 0, Constants.BlockSize);
-
-            Marshal.Copy(tempBuffer, 0, handle.AddrOfPinnedObject(), tempBuffer.Length);
-            handle.Free();
+                Marshal.Copy(tempBuffer, 0, handle.AddrOfPinnedObject(), tempBuffer.Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
 
         public void WriteBlock(int blockIndex, byte[] buffer)
@@ -61,8 +66,14 @@ namespace FS.BlockChain
             var tempBuffer = new byte[Marshal.SizeOf<T>() * buffer.Length];
 
             GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-            Marshal.Copy(handle.AddrOfPinnedObject(), tempBuffer, 0, tempBuffer.Length);
-            handle.Free();
+            try
+            {
+                Marshal.Copy(handle.AddrOfPinnedObject(), tempBuffer, 0, tempBuffer.Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
 
             this.fileStream.Position = blockIndex * Constants.BlockSize;
             this.fileStream.Write(tempBuffer, 0, Constants.BlockSize);
@@ -79,63 +90,5 @@ namespace FS.BlockChain
         {
             this.fileStream.Dispose();
         }
-
-        private static T BytesToStruct<T>(ref byte[] rawData) where T : struct
-        {
-            T result = default(T);
-            GCHandle handle = GCHandle.Alloc(rawData, GCHandleType.Pinned);
-            try
-            {
-                IntPtr rawDataPtr = handle.AddrOfPinnedObject();
-                result = (T)Marshal.PtrToStructure(rawDataPtr, typeof(T));
-            }
-            finally
-            {
-                handle.Free();
-            }
-            return result;
-        }
-
-        private static byte[] StructToBytes<T>(T data) where T : struct
-        {
-            byte[] rawData = new byte[Marshal.SizeOf(data)];
-            GCHandle handle = GCHandle.Alloc(rawData, GCHandleType.Pinned);
-            try
-            {
-                IntPtr rawDataPtr = handle.AddrOfPinnedObject();
-                Marshal.StructureToPtr(data, rawDataPtr, false);
-            }
-            finally
-            {
-                handle.Free();
-            }
-            return rawData;
-        }
     }
-
-
-    //internal interface IDirectoryManager
-    //{
-    //    IEnumerable<IDirectoryEntry> ReadRoot();
-
-    //    Task<IEnumerable<IDirectoryEntry>> Read(IDirectoryEntry entry);
-
-    //    Task<IDirectoryEntry> Create(IDirectoryEntry root, IDirectoryEntryDescriptor descriptor);
-
-    //    Task<bool> Delete(IDirectoryEntry directory);
-
-    //    Task<IDirectoryEntry> Update(IDirectoryEntry directory, IDirectoryEntryDescriptor descriptor);
-    //}
-
-    //internal interface IFileManager
-    //{
-
-    //}
-
-    //internal interface IFatSystem
-    //{
-    //    IEnumerable<IFatEntry> ReadRoot();
-
-    //    IEnumerable<IFatEntry> ReadChain();
-    //}
 }

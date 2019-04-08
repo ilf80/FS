@@ -1,12 +1,11 @@
 ﻿using FS.Allocattion;
-using FS.BlockChain;
-using FS.Contracts;
+using FS.BlockAccess;
 using FS.Directory;
-using FS.Contracts;
+using FS.BlockAccess.Indexes;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using bs = FS.BlockChain.BlockStorage;
+using bs = FS.BlockAccess.BlockStorage;
 namespace FS
 {
     [StructLayout(LayoutKind.Sequential, Size = 512)]
@@ -69,8 +68,8 @@ namespace FS
                 //return;
 
                 Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) => {
-                    IIndexBlockChainProvier allocationIndexProvider = new IndexBlockChainProvier(header[0].AllocationBlock, m, blockStorage);
-                    return new Index<int>(allocationIndexProvider, new BlockChain<int>(allocationIndexProvider), blockStorage, m);
+                    IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header[0].AllocationBlock, m, blockStorage);
+                    return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), blockStorage, m);
                 };
                 var allocationManager = new AllocationManager(allocationIndexFactory, blockStorage, header[0].FreeBlockCount);
 
@@ -80,7 +79,7 @@ namespace FS
                 //index.SetSizeInBlocks(1);
                 //index.Flush();
 
-                var rootDir = DirectoryManager.Read(header[0].RootDirectoryBlock, blockStorage, allocationManager);
+                var rootDir = DirectoryManager.ReadDirectory(header[0].RootDirectoryBlock, blockStorage, allocationManager);
 
                 //rootDir.CreateDirectory("Test");
 

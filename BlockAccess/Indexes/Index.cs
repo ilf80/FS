@@ -1,23 +1,21 @@
 ﻿using FS.Allocattion;
-using FS.BlockChain;
-using FS.Contracts;
 using System;
 using System.Runtime.InteropServices;
 
-namespace FS.Contracts
+namespace FS.BlockAccess.Indexes
 {
     internal class Index<T> : IIndex<T> where T : struct
     {
         static readonly int StructSize = Marshal.SizeOf<T>();
 
-        private readonly IIndexBlockChainProvier provider;
-        private readonly IBlockChain<int> indexBlockChain;
+        private readonly IIndexBlockProvier provider;
+        private readonly IBlockStream<int> indexBlockChain;
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
 
         public Index(
-            IIndexBlockChainProvier provider,
-            IBlockChain<int> blockChain,
+            IIndexBlockProvier provider,
+            IBlockStream<int> blockChain,
             IBlockStorage storage,
             IAllocationManager allocationManager)
         {

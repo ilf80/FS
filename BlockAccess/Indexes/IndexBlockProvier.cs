@@ -1,13 +1,11 @@
 ﻿using FS.Allocattion;
-using FS.BlockChain;
-using FS.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace FS.Contracts
+namespace FS.BlockAccess.Indexes
 {
-    internal class IndexBlockChainProvier : IIndexBlockChainProvier
+    internal class IndexBlockProvier : IIndexBlockProvier
     {
         private readonly LinkedList<int[]> indexList = new LinkedList<int[]>();
         private readonly int rootBlockIndex;
@@ -15,7 +13,7 @@ namespace FS.Contracts
         private readonly IBlockStorage storage;
         private bool isDirty;
 
-        public IndexBlockChainProvier(
+        public IndexBlockProvier(
             int rootBlockIndex,
             IAllocationManager allocationManager,
             IBlockStorage storage)

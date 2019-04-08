@@ -45,12 +45,12 @@
   <ItemGroup>
     <Compile Include="Allocation\AllocationManager.cs" />
     <Compile Include="Allocation\IAllocationManager.cs" />
-    <Compile Include="BlockChain\BlockChain.cs" />
-    <Compile Include="BlockStorage\BlockStorage.cs" />
-    <Compile Include="BlockChain\IBlockChain.cs" />
-    <Compile Include="BlockChain\IBlockChainProvider.cs" />
+    <Compile Include="BlockAccess\BlockStream.cs" />
+    <Compile Include="BlockAccess\IBlockProvider.cs" />
+    <Compile Include="BlockAccess\IBlockStream.cs" />
+    <Compile Include="BlockAccess\BlockStorage.cs" />
     <Compile Include="Contracts\Contracts.cs" />
-    <Compile Include="BlockStorage\IBlockStorage.cs" />
+    <Compile Include="BlockAccess\IBlockStorage.cs" />
     <Compile Include="Directory\DirectoryEntry.cs" />
     <Compile Include="Directory\DirectoryEntryInfo.cs" />
     <Compile Include="Directory\DirectoryFlags.cs" />
@@ -63,10 +63,10 @@
     <Compile Include="Directory\IFile.cs" />
     <Compile Include="FileManager.cs" />
     <Compile Include="Contracts\IFlushable.cs" />
-    <Compile Include="Indexes\IIndex.cs" />
-    <Compile Include="Indexes\IIndexBlockChainProvier.cs" />
-    <Compile Include="Indexes\Index.cs" />
-    <Compile Include="Indexes\IndexBlockChainProvier.cs" />
+    <Compile Include="BlockAccess\Indexes\IIndex.cs" />
+    <Compile Include="BlockAccess\Indexes\IIndexBlockProvier.cs" />
+    <Compile Include="BlockAccess\Indexes\Index.cs" />
+    <Compile Include="BlockAccess\Indexes\IndexBlockProvier.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils\Guard.cs" />
