@@ -1,20 +1,10 @@
-﻿using FS.BlockStorage;
+﻿using FS.BlockChain;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FS.Indexes
+namespace FS.Contracts
 {
-    interface IFlushable
-    {
-        void Flush();
-    }
-
     internal interface IIndex<T> : IBlockChainProvider<T>, IFlushable where T : struct
     {
-    }
-
-    internal interface IIndexBlockChainProvier : IBlockChainProvider<int>, IFlushable
-    {
-        int UsedEntryCount { get; }
     }
 }

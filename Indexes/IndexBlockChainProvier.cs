@@ -1,24 +1,24 @@
 ﻿using FS.Allocattion;
-using FS.BlockStorage;
+using FS.BlockChain;
 using FS.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace FS.Indexes
+namespace FS.Contracts
 {
     internal class IndexBlockChainProvier : IIndexBlockChainProvier
     {
         private readonly LinkedList<int[]> indexList = new LinkedList<int[]>();
         private readonly int rootBlockIndex;
-        private readonly IAllocationManager2 allocationManager;
-        private readonly IBlockStorage2 storage;
+        private readonly IAllocationManager allocationManager;
+        private readonly IBlockStorage storage;
         private bool isDirty;
 
         public IndexBlockChainProvier(
             int rootBlockIndex,
-            IAllocationManager2 allocationManager,
-            IBlockStorage2 storage)
+            IAllocationManager allocationManager,
+            IBlockStorage storage)
         {
             this.rootBlockIndex = rootBlockIndex;
             this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));

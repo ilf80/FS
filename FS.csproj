@@ -44,29 +44,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Allocation\AllocationManager.cs" />
-    <Compile Include="Allocation\AllocationManager2.cs" />
     <Compile Include="Allocation\IAllocationManager.cs" />
-    <Compile Include="BlockStorage\BlockChain.cs" />
+    <Compile Include="BlockChain\BlockChain.cs" />
     <Compile Include="BlockStorage\BlockStorage.cs" />
-    <Compile Include="BlockStorage\BlockStorage2.cs" />
-    <Compile Include="BlockStorage\IBlockChain.cs" />
+    <Compile Include="BlockChain\IBlockChain.cs" />
+    <Compile Include="BlockChain\IBlockChainProvider.cs" />
     <Compile Include="Contracts\Contracts.cs" />
     <Compile Include="BlockStorage\IBlockStorage.cs" />
-    <Compile Include="Directory\IDirectoryManager.cs" />
+    <Compile Include="Directory\DirectoryEntry.cs" />
+    <Compile Include="Directory\DirectoryEntryInfo.cs" />
+    <Compile Include="Directory\DirectoryFlags.cs" />
+    <Compile Include="Directory\DirectoryHeader.cs" />
+    <Compile Include="Directory\DirectoryItem.cs" />
+    <Compile Include="Directory\DirectoryManager.cs" />
+    <Compile Include="Directory\File.cs" />
+    <Compile Include="Directory\IDirectory.cs" />
+    <Compile Include="Directory\IDirectoryEntryInfo.cs" />
+    <Compile Include="Directory\IFile.cs" />
     <Compile Include="FileManager.cs" />
-    <Compile Include="FileOffsetAttribute.cs" />
+    <Compile Include="Contracts\IFlushable.cs" />
     <Compile Include="Indexes\IIndex.cs" />
-    <Compile Include="Indexes\IIndexManager.cs" />
+    <Compile Include="Indexes\IIndexBlockChainProvier.cs" />
     <Compile Include="Indexes\Index.cs" />
     <Compile Include="Indexes\IndexBlockChainProvier.cs" />
-    <Compile Include="Indexes\IndexDescriptor.cs" />
-    <Compile Include="Indexes\IndexList.cs" />
-    <Compile Include="Indexes\IndexManager.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SystemFile\IFile.cs" />
-    <Compile Include="SystemFile\ISystemFile.cs" />
-    <Compile Include="SystemFile\SystemFile.cs" />
     <Compile Include="Utils\Guard.cs" />
     <Compile Include="Utils\Helpers.cs" />
   </ItemGroup>

@@ -1,28 +1,24 @@
-﻿using System;
+﻿using FS.Contracts;
+using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Threading.Tasks;
-using FS.Contracts;
 
-namespace FS.BlockStorage
+namespace FS.BlockChain
 {
-    internal sealed class BlockDevice : IBlockStorage
+    internal class BlockStorage : IBlockStorage
     {
         private readonly string fileName;
-        private readonly TaskFactory taskFactory;
         private FileStream fileStream;
 
-        public uint TotalSize => throw new NotImplementedException();
+        public long TotalSize => this.fileStream.Length;
 
         public int BlockSize => Constants.BlockSize;
 
-        public BlockDevice(
-            string fileName,
-            TaskFactory taskFactory)
+        public BlockStorage(
+            string fileName)
         {
             this.fileName = fileName;
-            this.taskFactory = taskFactory ?? throw new ArgumentNullException(nameof(taskFactory));
         }
 
         public void Open()
@@ -30,55 +26,53 @@ namespace FS.BlockStorage
             this.fileStream = new FileStream(this.fileName,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                FileShare.None,
+                //FileShare.None,
+                FileShare.Read,
                 Constants.BlockSize,
                 FileOptions.Asynchronous | FileOptions.RandomAccess);
         }
 
-        public Task ReadBlock(uint blockIndex, byte[] buffer)
+        public void ReadBlock(int blockIndex, byte[] buffer)
         {
             this.fileStream.Position = blockIndex * Constants.BlockSize;
-            var asyncResult = this.fileStream.BeginRead(buffer, 0, Constants.BlockSize, r => { }, null);
-            return this.taskFactory.FromAsync(asyncResult, r => { });
+            this.fileStream.Read(buffer, 0, Constants.BlockSize);
         }
 
-        public Task ReadBlock<T>(uint blockIndex, out T target) where T : struct
+        public void ReadBlock<T>(int blockIndex, T[] buffer) where T : struct
         {
-            target = default(T);
-            var buffer = new byte[Marshal.SizeOf<T>()];
-            GCHandle handle = GCHandle.Alloc(target, GCHandleType.Pinned);
-            return ReadBlock(blockIndex, buffer)
-                .ContinueWith(x =>
-                {
-                    Marshal.Copy(buffer, 0, handle.AddrOfPinnedObject(), buffer.Length);
-                })
-                .ContinueWith(x =>
-                    handle.Free(),
-                    TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.OnlyOnRanToCompletion | TaskContinuationOptions.ExecuteSynchronously
-                );
+            var tempBuffer = new byte[Marshal.SizeOf<T>() * buffer.Length];
+            GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+
+            this.fileStream.Position = blockIndex * Constants.BlockSize;
+            this.fileStream.Read(tempBuffer, 0, Constants.BlockSize);
+
+            Marshal.Copy(tempBuffer, 0, handle.AddrOfPinnedObject(), tempBuffer.Length);
+            handle.Free();
         }
 
-        public Task<T> ReadBlock<T>(uint blockIndex) where T : struct
-        {
-            var buffer = new byte[Marshal.SizeOf<T>()];
-            return ReadBlock(blockIndex, buffer)
-                .ContinueWith(x =>
-                {
-                    return BytesToStruct<T>(ref buffer);
-                });
-        }
-
-        public Task WriteBlock(uint blockIndex, byte[] buffer)
+        public void WriteBlock(int blockIndex, byte[] buffer)
         {
             this.fileStream.Position = blockIndex * Constants.BlockSize;
-            var asyncResult = this.fileStream.BeginWrite(buffer, 0, Constants.BlockSize, null, null);
-            return this.taskFactory.FromAsync(asyncResult, r => { });
+            this.fileStream.Write(buffer, 0, Constants.BlockSize);
         }
 
-        public Task WriteBlock<T>(uint blockIndex, ref T target) where T : struct
+        public void WriteBlock<T>(int blockIndex, T[] buffer) where T : struct
         {
-            var buffer = StructToBytes(target);
-            return WriteBlock(blockIndex, buffer);
+            var tempBuffer = new byte[Marshal.SizeOf<T>() * buffer.Length];
+
+            GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            Marshal.Copy(handle.AddrOfPinnedObject(), tempBuffer, 0, tempBuffer.Length);
+            handle.Free();
+
+            this.fileStream.Position = blockIndex * Constants.BlockSize;
+            this.fileStream.Write(tempBuffer, 0, Constants.BlockSize);
+        }
+
+        public int[] Extend(int blockCount)
+        {
+            var result = Enumerable.Range((int)(this.fileStream.Length / BlockSize) + 1, blockCount).ToArray();
+            this.fileStream.SetLength(this.fileStream.Length + blockCount * BlockSize);
+            return result;
         }
 
         public void Dispose()
@@ -118,4 +112,30 @@ namespace FS.BlockStorage
             return rawData;
         }
     }
+
+
+    //internal interface IDirectoryManager
+    //{
+    //    IEnumerable<IDirectoryEntry> ReadRoot();
+
+    //    Task<IEnumerable<IDirectoryEntry>> Read(IDirectoryEntry entry);
+
+    //    Task<IDirectoryEntry> Create(IDirectoryEntry root, IDirectoryEntryDescriptor descriptor);
+
+    //    Task<bool> Delete(IDirectoryEntry directory);
+
+    //    Task<IDirectoryEntry> Update(IDirectoryEntry directory, IDirectoryEntryDescriptor descriptor);
+    //}
+
+    //internal interface IFileManager
+    //{
+
+    //}
+
+    //internal interface IFatSystem
+    //{
+    //    IEnumerable<IFatEntry> ReadRoot();
+
+    //    IEnumerable<IFatEntry> ReadChain();
+    //}
 }

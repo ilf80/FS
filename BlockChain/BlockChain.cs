@@ -1,7 +1,7 @@
 ﻿using FS.Utils;
 using System;
 
-namespace FS.BlockStorage
+namespace FS.BlockChain
 {
     internal sealed class BlockChain<T> : IBlockChain<T> where T : struct
     {

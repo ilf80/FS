@@ -1,22 +1,78 @@
-﻿using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using FS.BlockChain;
 using FS.Contracts;
+using System;
+using System.Linq;
+using System.Threading;
 
 namespace FS.Allocattion
 {
-    internal sealed class AllocationManager : IAllocationManager
+    internal class AllocationManager : IAllocationManager
     {
-        private int block = 2;
+        private readonly IIndex<int> index;
+        private readonly IBlockChain<int> blockChain;
+        private readonly IBlockStorage storage;
+        private int releasedBlockCount;
 
-        public Task<uint[]> Allocate(int blockCount)
+        public AllocationManager(
+            Func<IAllocationManager, IIndex<int>> indexFacory,
+            IBlockStorage storage,
+            int freeSpaceBlocksCount)
         {
-            return Task.FromResult(Enumerable.Range(0, blockCount).Select(x => (uint)Interlocked.Increment(ref this.block)).ToArray());
+            if (indexFacory == null)
+            {
+                throw new ArgumentNullException(nameof(indexFacory));
+            }
+
+            this.index = indexFacory(this);
+
+            this.blockChain = new BlockChain<int>(this.index);
+            this.storage = storage ?? throw new System.ArgumentNullException(nameof(storage));
+            this.releasedBlockCount = freeSpaceBlocksCount;
         }
 
-        public Task<IOVoid> Release(uint[] blocks)
+        public int ReleasedBlockCount => this.releasedBlockCount;
+
+        public int[] Allocate(int blockCount)
         {
-            return Task.FromResult(IOVoid.Instance);
+            CheckSize(blockCount);
+
+            var allocatedFromIndexBlocks = new int[0];
+            var allocatedFromIndexBlockCount = Math.Min(this.releasedBlockCount, blockCount);
+            if (allocatedFromIndexBlockCount > 0)
+            {
+                allocatedFromIndexBlocks = new int[allocatedFromIndexBlockCount];
+                var position = this.releasedBlockCount - allocatedFromIndexBlockCount;
+
+                this.blockChain.Read(position, allocatedFromIndexBlocks);
+                this.blockChain.Write(position, new int[allocatedFromIndexBlockCount]);
+
+                this.releasedBlockCount -= allocatedFromIndexBlockCount;
+            }
+
+            var leftBlocks = blockCount - allocatedFromIndexBlockCount;
+            if (leftBlocks > 0)
+            {
+                var blocks = this.storage.Extend(leftBlocks);
+                return allocatedFromIndexBlocks.Concat(blocks).ToArray();
+            }
+            return allocatedFromIndexBlocks;
+        }
+
+        public void Release(int[] blocks)
+        {
+            this.index.SetSizeInBlocks(this.releasedBlockCount + blocks.Length);
+            this.blockChain.Write(this.releasedBlockCount, blocks);
+            this.releasedBlockCount += blocks.Length;
+        }
+
+        public void Flush()
+        {
+            this.index.Flush();
+        }
+        
+        private void CheckSize(int blockCount)
+        {
+
         }
     }
 }

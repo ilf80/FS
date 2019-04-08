@@ -1,17 +1,10 @@
 ﻿using FS.Contracts;
-using FS.Indexes;
+using FS.Contracts;
 using System.Threading.Tasks;
 
 namespace FS.Allocattion
 {
-    internal interface IAllocationManager
-    {
-        Task<uint[]> Allocate(int blockCount);
-
-        Task<IOVoid> Release(uint[] blocks);
-    }
-
-    internal interface IAllocationManager2 : IFlushable
+    internal interface IAllocationManager : IFlushable
     {
         int ReleasedBlockCount { get; }
 

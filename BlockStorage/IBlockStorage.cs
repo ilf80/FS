@@ -1,26 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace FS.BlockStorage
+namespace FS.BlockChain
 {
-    internal interface IBlockStorage: IDisposable
-    {
-        uint TotalSize { get; }
-
-        int BlockSize { get; }
-
-        Task ReadBlock(uint blockIndex, byte[] buffer);
-
-        Task WriteBlock(uint blockIndex, byte[] buffer);
-
-        //Task ReadBlock<T>(uint blockIndex, out T target) where T : struct;
-
-        Task<T> ReadBlock<T>(uint blockIndex) where T : struct;
-
-        Task WriteBlock<T>(uint blockIndex, ref T target) where T : struct;
-    }
-
-    internal interface IBlockStorage2 : IDisposable
+    internal interface IBlockStorage : IDisposable
     {
         long TotalSize { get; }
 
@@ -36,30 +19,4 @@ namespace FS.BlockStorage
 
         int[] Extend(int blockCount);
     }
-
-
-    //internal interface IDirectoryManager
-    //{
-    //    IEnumerable<IDirectoryEntry> ReadRoot();
-
-    //    Task<IEnumerable<IDirectoryEntry>> Read(IDirectoryEntry entry);
-
-    //    Task<IDirectoryEntry> Create(IDirectoryEntry root, IDirectoryEntryDescriptor descriptor);
-
-    //    Task<bool> Delete(IDirectoryEntry directory);
-
-    //    Task<IDirectoryEntry> Update(IDirectoryEntry directory, IDirectoryEntryDescriptor descriptor);
-    //}
-
-    //internal interface IFileManager
-    //{
-
-    //}
-
-    //internal interface IFatSystem
-    //{
-    //    IEnumerable<IFatEntry> ReadRoot();
-
-    //    IEnumerable<IFatEntry> ReadChain();
-    //}
 }

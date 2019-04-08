@@ -1,10 +1,10 @@
 ﻿using FS.Allocattion;
-using FS.BlockStorage;
+using FS.BlockChain;
 using FS.Contracts;
 using System;
 using System.Runtime.InteropServices;
 
-namespace FS.Indexes
+namespace FS.Contracts
 {
     internal class Index<T> : IIndex<T> where T : struct
     {
@@ -12,14 +12,14 @@ namespace FS.Indexes
 
         private readonly IIndexBlockChainProvier provider;
         private readonly IBlockChain<int> indexBlockChain;
-        private readonly IBlockStorage2 storage;
-        private readonly IAllocationManager2 allocationManager;
+        private readonly IBlockStorage storage;
+        private readonly IAllocationManager allocationManager;
 
         public Index(
             IIndexBlockChainProvier provider,
             IBlockChain<int> blockChain,
-            IBlockStorage2 storage,
-            IAllocationManager2 allocationManager)
+            IBlockStorage storage,
+            IAllocationManager allocationManager)
         {
             this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
             this.indexBlockChain = blockChain ?? throw new ArgumentNullException(nameof(blockChain));

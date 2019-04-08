@@ -1,137 +1,18 @@
 ﻿using FS.Allocattion;
-using FS.BlockStorage;
-using FS.Indexes;
+using FS.BlockChain;
+using FS.Contracts;
 using FS.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FS.Directory
 {
-    [Flags]
-    internal enum DirectoryFlags : uint
-    {
-        None = 0,
-        File = 0b0001,
-        Directory = 0b0010,
-        Deleted = 0b1000
-    }
-
-
-    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 32)]
-    internal struct DirectoryEntry
-    {
-        [FieldOffset(0)]
-        public DirectoryFlags Flags;
-
-        [FieldOffset(4)]
-        public int Size;
-
-        [FieldOffset(8)]
-        public long Created;
-
-        [FieldOffset(16)]
-        public long Updated;
-
-        [FieldOffset(24)]
-        public int NameOffset;
-
-        [FieldOffset(28)]
-        public int BlockIndex;
-    }
-
-    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 32)]
-    internal struct DirectoryHeader
-    {
-        [FieldOffset(0)]
-        public int NameBlockIndex;
-
-        [FieldOffset(4)]
-        public int FirstEmptyItemOffset;
-
-        [FieldOffset(8)]
-        public int ItemsCount;
-
-        [FieldOffset(12)]
-        public int LastNameOffset;
-    }
-
-    [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 32)]
-    internal struct DirectoryItem
-    {
-        [FieldOffset(0)]
-        public DirectoryEntry Entry;
-
-        [FieldOffset(0)]
-        public DirectoryHeader Header;
-    }
-
-    internal interface IDirectory : IFlushable
-    {
-        IDirectory CreateDirectory(string name);
-
-        IFile OpenFile(string name);
-
-        IDirectoryEntryInfo[] GetDirectoryEntries();
-    }
-
-    internal interface IFile : IFlushable
-    {
-        void Read(int position, byte[] buffer);
-
-        void Write(int position, byte[] buffer);
-
-        void SetSize(int size);
-    }
-
-    public interface IDirectoryEntryInfo
-    {
-        bool IsDirectory { get; }
-
-        int Size { get; }
-
-        DateTime Created { get; }
-
-        DateTime Updated { get; }
-
-        string Name { get; }
-
-        int BlockId { get; }
-    }
-
-    internal sealed class DirectoryEntryInfo : IDirectoryEntryInfo
-    {
-        public DirectoryEntryInfo(DirectoryEntry header, string name)
-        {
-            IsDirectory = header.Flags == DirectoryFlags.Directory;
-            Size = header.Size;
-            Created = DateTime.FromBinary(header.Created);
-            Updated = DateTime.FromBinary(header.Updated);
-            Name = name;
-            BlockId = header.BlockIndex;
-        }
-
-        public bool IsDirectory { get; private set; }
-
-        public int Size { get; private set; }
-
-        public DateTime Created { get; private set; }
-
-        public DateTime Updated { get; private set; }
-
-        public string Name { get; private set; }
-
-        public int BlockId { get; private set; }
-    }
-
     internal class DirectoryManager: IDirectory
     {
         private readonly IIndex<DirectoryItem> index;
-        private readonly IBlockStorage2 storage;
-        private readonly IAllocationManager2 allocationManager;
+        private readonly IBlockStorage storage;
+        private readonly IAllocationManager allocationManager;
         private readonly BlockChain<DirectoryItem> blockChain;
         private readonly Index<short> nameIndex;
         private BlockChain<short> nameIndexBlockChain;
@@ -142,8 +23,8 @@ namespace FS.Directory
 
         public DirectoryManager(
             IIndex<DirectoryItem> index,
-            IBlockStorage2 storage,
-            IAllocationManager2 allocationManager,
+            IBlockStorage storage,
+            IAllocationManager allocationManager,
             DirectoryHeader header)
         {
             this.index = index ?? throw new ArgumentNullException(nameof(index));
@@ -234,8 +115,8 @@ namespace FS.Directory
 
         public static IDirectory Read(
             int blockIndex, 
-            IBlockStorage2 storage,
-            IAllocationManager2 allocationManager)
+            IBlockStorage storage,
+            IAllocationManager allocationManager)
         {
             var indexBlockChainProvider = new IndexBlockChainProvier(blockIndex, allocationManager, storage);
             var index = new Index<DirectoryItem>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), storage, allocationManager);
@@ -334,49 +215,6 @@ namespace FS.Directory
 
             this.lastNameOffset += name.Length + 1;
             return result;
-        }
-    }
-
-    internal sealed class File : IFile
-    {
-        private readonly IBlockStorage2 storage;
-        private readonly IAllocationManager2 allocationManager;
-        private readonly int blockId;
-        private readonly BlockChain<byte> blockChain;
-        private readonly Index<byte> index;
-
-        public File(
-            IBlockStorage2 storage,
-            IAllocationManager2 allocationManager,
-            int blockId)
-        {
-            this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
-            this.blockId = blockId;
-
-            var provider = new IndexBlockChainProvier(blockId, this.allocationManager, this.storage);
-            var indexBlockChain = new BlockChain<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.storage, this.allocationManager);
-            this.blockChain = new BlockChain<byte>(this.index);
-        }
-        public void Flush()
-        {
-            this.index.Flush();
-        }
-
-        public void Read(int position, byte[] buffer)
-        {
-            this.blockChain.Read(position, buffer);
-        }
-
-        public void SetSize(int size)
-        {
-            this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(size, this.index.BlockSize));
-        }
-
-        public void Write(int position, byte[] buffer)
-        {
-            this.blockChain.Write(position, buffer);
         }
     }
 }

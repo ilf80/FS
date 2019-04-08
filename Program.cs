@@ -1,12 +1,12 @@
 ﻿using FS.Allocattion;
-using FS.BlockStorage;
+using FS.BlockChain;
 using FS.Contracts;
 using FS.Directory;
-using FS.Indexes;
+using FS.Contracts;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using bs = FS.BlockStorage.BlockStorage2;
+using bs = FS.BlockChain.BlockStorage;
 namespace FS
 {
     [StructLayout(LayoutKind.Sequential, Size = 512)]
@@ -68,11 +68,11 @@ namespace FS
                 //await blockStorage.WriteBlock(1, buffer);
                 //return;
 
-                Func<IAllocationManager2, IIndex<int>> allocationIndexFactory = (IAllocationManager2 m) => {
+                Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) => {
                     IIndexBlockChainProvier allocationIndexProvider = new IndexBlockChainProvier(header[0].AllocationBlock, m, blockStorage);
                     return new Index<int>(allocationIndexProvider, new BlockChain<int>(allocationIndexProvider), blockStorage, m);
                 };
-                var allocationManager = new AllocationManager2(allocationIndexFactory, blockStorage, header[0].FreeBlockCount);
+                var allocationManager = new AllocationManager(allocationIndexFactory, blockStorage, header[0].FreeBlockCount);
 
                 //var indexBlockChainProvider = new IndexBlockChainProvier(header[0].RootDirectoryBlock, allocationManager, blockStorage);
                 //var index = new Index<DirectoryItem>(indexBlockChainProvider, new BlockChain<int>(indexBlockChainProvider), blockStorage, allocationManager);
