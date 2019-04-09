@@ -13,6 +13,7 @@ namespace FS.Directory
         private readonly IIndex<DirectoryItem> index;
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
+        private readonly int parentDirectoryBlockId;
         private readonly BlockStream<DirectoryItem> blockChain;
         private readonly Index<short> nameIndex;
         private BlockStream<short> nameIndexBlockChain;
@@ -41,6 +42,7 @@ namespace FS.Directory
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
             this.itemsCount = header.ItemsCount;
             this.lastNameOffset = header.LastNameOffset;
+            this.parentDirectoryBlockId = header.ParentDirectoryBlockIndex;
         }
 
         public IDirectory OpenDirectory(string name)
@@ -65,12 +67,13 @@ namespace FS.Directory
                 FirstEmptyItemOffset = 1,
                 ItemsCount = 0,
                 LastNameOffset = 0,
-                NameBlockIndex = blocks[0]
+                NameBlockIndex = blocks[0],
+                ParentDirectoryBlockIndex = this.index.BlockId
             };
             var directory = new DirectoryManager(directoryIndex, this.storage, this.allocationManager, header);
             directory.UpdateHeader();
 
-            AddEntry(blocks[0], name, DirectoryFlags.Directory);
+            AddEntry(directoryIndex.BlockId, name, DirectoryFlags.Directory);
 
 
             return directory;
@@ -195,6 +198,8 @@ namespace FS.Directory
             this.itemsCount++;
 
             UpdateHeader();
+            Flush();
+
             UpdateAccessTime();
         }
 
@@ -232,7 +237,8 @@ namespace FS.Directory
                     FirstEmptyItemOffset = this.firstEmptyItemOffset,
                     NameBlockIndex = this.nameBlockIndex,
                     ItemsCount = this.itemsCount,
-                    LastNameOffset = this.lastNameOffset
+                    LastNameOffset = this.lastNameOffset,
+                    ParentDirectoryBlockIndex = this.parentDirectoryBlockId
                 }
             };
             this.blockChain.Write(0, new[] { directoryHeaderItem });
@@ -240,6 +246,15 @@ namespace FS.Directory
 
         private void UpdateAccessTime()
         {
+            if (this.index.BlockId == this.parentDirectoryBlockId)
+            {
+                return;
+            }
+
+            using (var directory = DirectoryManager.ReadDirectory(this.parentDirectoryBlockId, this.storage, this.allocationManager))
+            {
+                directory.UpdateEntry(this.index.BlockId, new DirectoryEntryInfoOverrides(null, DateTime.Now, null));
+            }
         }
 
         private int StoreName(string name)

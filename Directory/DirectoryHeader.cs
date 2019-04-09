@@ -16,5 +16,8 @@ namespace FS.Directory
 
         [FieldOffset(12)]
         public int LastNameOffset;
+
+        [FieldOffset(16)]
+        public int ParentDirectoryBlockIndex;
     }
 }

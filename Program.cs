@@ -45,7 +45,8 @@ namespace FS
                 //    FirstEmptyItemOffset = 1,
                 //    ItemsCount = 0,
                 //    LastNameOffset = 0,
-                //    NameBlockIndex = 4
+                //    NameBlockIndex = 4,
+                //    ParentDirectoryBlockIndex = 2
                 //};
                 //blockStorage.WriteBlock(3, new[] { new DirectoryHeaderRoot { Header = fsRoot } });
                 //blockStorage.Dispose();
@@ -56,16 +57,6 @@ namespace FS
                 var header = new FSHeader[1];
                 blockStorage.ReadBlock(0, header);
 
-
-                //var buffer = new int[512 + 512 * 2];
-                //for(var i = 0; i<buffer.Length; i++)
-                //{
-                //    buffer[i] = i;
-                //}
-                //await blockStorage.WriteBlock(0, buffer);
-                //buffer[0] = 2;
-                //await blockStorage.WriteBlock(1, buffer);
-                //return;
 
                 Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) => {
                     IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header[0].AllocationBlock, m, blockStorage);
@@ -81,26 +72,38 @@ namespace FS
 
                 var rootDir = DirectoryManager.ReadDirectory(header[0].RootDirectoryBlock, blockStorage, allocationManager);
 
-                //rootDir.CreateDirectory("Test");
+                //rootDir.OpenDirectory("Test");
 
                 //for (var i = 0; i < 10; i++)
                 //{
-                //    rootDir.CreateDirectory("Dir " + i);
+                //    rootDir.OpenDirectory("Dir " + i);
                 //}
 
-                var file = rootDir.OpenFile("Test File 3");
-                //file.SetSize(123);
+                //var file = rootDir.OpenFile("Test File 3");
+                //file.SetSize(128);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
                 //file.Flush();
 
                 var buffer = new byte[10];
-                file.Read(0, buffer);
+                //file.Read(0, buffer);
 
                 for(var i = 0; i < buffer.Length; i++)
                 {
                     Console.Write(buffer[i].ToString("X2"));
                     Console.Write(' ');
                 }
+                Console.WriteLine();
+
+                var dir = rootDir.OpenDirectory("Dir 0");
+                dir.OpenDirectory("Dir 0.1");
+                dir.OpenDirectory("Dir 0.2");
+
+                foreach (var entry in dir.GetDirectoryEntries())
+                {
+                    Console.WriteLine($"Enrty: Name Dir 0/{entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
+                }
+                dir.Flush();
+
                 //file.SetSize(123);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
                 ////file.Flush();
