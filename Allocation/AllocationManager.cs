@@ -47,6 +47,8 @@ namespace FS.Allocattion
                 this.blockChain.Write(position, new int[allocatedFromIndexBlockCount]);
 
                 this.releasedBlockCount -= allocatedFromIndexBlockCount;
+
+                ClearBlocks(allocatedFromIndexBlocks);
             }
 
             var leftBlocks = blockCount - allocatedFromIndexBlockCount;
@@ -69,7 +71,16 @@ namespace FS.Allocattion
         {
             this.index.Flush();
         }
-        
+
+        private void ClearBlocks(int[] blocks)
+        {
+            var zerroBuffer = new byte[this.storage.BlockSize];
+            foreach (var blockId in blocks)
+            {
+                this.storage.WriteBlock(blockId, zerroBuffer);
+            }
+        }
+
         private void CheckSize(int blockCount)
         {
 

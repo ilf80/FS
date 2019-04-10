@@ -79,13 +79,13 @@ namespace FS
                 //    rootDir.OpenDirectory("Dir " + i);
                 //}
 
-                //var file = rootDir.OpenFile("Test File 3");
+                var file = rootDir.OpenFile("Test File 3");
                 //file.SetSize(128);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
                 //file.Flush();
 
                 var buffer = new byte[10];
-                //file.Read(0, buffer);
+                file.Read(0, buffer);
 
                 for(var i = 0; i < buffer.Length; i++)
                 {
@@ -95,8 +95,8 @@ namespace FS
                 Console.WriteLine();
 
                 var dir = rootDir.OpenDirectory("Dir 0");
-                dir.OpenDirectory("Dir 0.1");
-                dir.OpenDirectory("Dir 0.2");
+                //dir.OpenDirectory("Dir 0.1");
+                //dir.OpenDirectory("Dir 0.2");
 
                 foreach (var entry in dir.GetDirectoryEntries())
                 {
@@ -104,9 +104,9 @@ namespace FS
                 }
                 dir.Flush();
 
-                //file.SetSize(123);
+                //file.SetSize(200);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
-                ////file.Flush();
+                //file.Flush();
 
                 //rootDir.CreateDirectory(new string('0', 10123));
 

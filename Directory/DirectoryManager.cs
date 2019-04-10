@@ -14,7 +14,7 @@ namespace FS.Directory
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
         private readonly int parentDirectoryBlockId;
-        private readonly BlockStream<DirectoryItem> blockChain;
+        private readonly BlockStream<DirectoryItem> blockStream;
         private readonly Index<short> nameIndex;
         private BlockStream<short> nameIndexBlockChain;
         private int nameBlockIndex;
@@ -31,12 +31,12 @@ namespace FS.Directory
             this.index = index ?? throw new ArgumentNullException(nameof(index));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
             this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
-            this.blockChain = new BlockStream<DirectoryItem>(index);
+            this.blockStream = new BlockStream<DirectoryItem>(index);
             this.nameBlockIndex = header.NameBlockIndex;
 
             var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.allocationManager, this.storage);
-            var nameIndexBlockChain = new BlockStream<int>(nameIndexProvider);
-            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexBlockChain, this.storage, this.allocationManager);
+            var nameIndexBlockStream = new BlockStream<int>(nameIndexProvider);
+            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexBlockStream, this.storage, this.allocationManager);
             this.nameIndexBlockChain = new BlockStream<short>(this.nameIndex);
 
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
@@ -82,7 +82,7 @@ namespace FS.Directory
         public IDirectoryEntryInfo[] GetDirectoryEntries()
         {
             var buffer = new DirectoryItem[this.itemsCount];
-            this.blockChain.Read(1, buffer);
+            this.blockStream.Read(1, buffer);
 
             var names = new short[this.lastNameOffset];
             this.nameIndexBlockChain.Read(0, names);
@@ -152,7 +152,7 @@ namespace FS.Directory
         public void UpdateEntry(int blockId, IDirectoryEntryInfoOverrides overrides)
         {
             var buffer = new DirectoryItem[this.itemsCount];
-            this.blockChain.Read(1, buffer);
+            this.blockStream.Read(1, buffer);
 
             for(var i = 0; i < buffer.Length; i++)
             {
@@ -160,7 +160,7 @@ namespace FS.Directory
                 if (entry.Entry.BlockIndex == blockId)
                 {
                     ApplyOverrides(ref entry.Entry, overrides);
-                    this.blockChain.Write(i + 1, new[] { entry });
+                    this.blockStream.Write(i + 1, new[] { entry });
                     return;
                 }
             }
@@ -192,7 +192,7 @@ namespace FS.Directory
         }
         private void AddEntry(DirectoryItem directoryEntryItem)
         {
-            this.blockChain.Write(this.firstEmptyItemOffset, new[] { directoryEntryItem });
+            this.blockStream.Write(this.firstEmptyItemOffset, new[] { directoryEntryItem });
 
             this.firstEmptyItemOffset = FindEmptyItem(this.firstEmptyItemOffset);
             this.itemsCount++;
@@ -212,7 +212,7 @@ namespace FS.Directory
             if (maxCapacity >= firstEmptyItemOffset)
             {
                 var buffer = new DirectoryItem[maxCapacity - firstEmptyItemOffset];
-                this.blockChain.Read(firstEmptyItemOffset, buffer);
+                this.blockStream.Read(firstEmptyItemOffset, buffer);
 
                 emptyEntryIndex = buffer
                     .Where(x => x.Entry.Flags == DirectoryFlags.None || (x.Entry.Flags & DirectoryFlags.Deleted) != 0)
@@ -241,7 +241,7 @@ namespace FS.Directory
                     ParentDirectoryBlockIndex = this.parentDirectoryBlockId
                 }
             };
-            this.blockChain.Write(0, new[] { directoryHeaderItem });
+            this.blockStream.Write(0, new[] { directoryHeaderItem });
         }
 
         private void UpdateAccessTime()
