@@ -46,7 +46,9 @@
   <ItemGroup>
     <Compile Include="Allocation\AllocationManager.cs" />
     <Compile Include="Allocation\IAllocationManager.cs" />
+    <Compile Include="Api\DirectoryEntry.cs" />
     <Compile Include="Api\FileSystem.cs" />
+    <Compile Include="Api\FileSystemEntry.cs" />
     <Compile Include="Api\IDirectoryEnry.cs" />
     <Compile Include="Api\IFileEntry.cs" />
     <Compile Include="Api\IFileSystemEntry.cs" />
