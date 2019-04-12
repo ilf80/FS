@@ -9,6 +9,8 @@ using bs = FS.Contracts.BlockStorage;
 using FS.Api;
 using System.Linq;
 using System.Threading;
+using System.IO;
+using System.Text;
 
 namespace FS
 {
@@ -50,6 +52,20 @@ namespace FS
 
                 PrindDirectory(root, "ROOT");
 
+                var file = root.OpenFile("Test File 12.04.2019", OpenMode.OpenOrCreate);
+                file.SetSize(512 * 10);
+
+                using (var memoryStream = new MemoryStream())
+                using (var writer = new BinaryWriter(memoryStream, Encoding.Unicode))
+                using (var reader = System.IO.File.OpenText(@"C:\Users\Ilya\source\repos\FS\Program.cs"))
+                {
+                    writer.Write(reader.ReadToEnd());
+                    file.SetSize((int)memoryStream.Length);
+                    file.Write(0, memoryStream.ToArray());
+                }
+                file.Dispose();
+
+
                 using (var d = root.OpenDirectory("Dir 8", OpenMode.OpenExisting))
                 {
                     var t = new Task(() =>
@@ -77,14 +93,14 @@ namespace FS
                 }
             }
 
-                return;
+            return;
             var taskFactory = new TaskFactory(TaskCreationOptions.None, TaskContinuationOptions.ExecuteSynchronously);
             using (var blockStorage = new bs("TestFile.dat"))
             {
-                //blockStorage.Open();
-                //var b = new byte[512];
+                blockStorage.Open();
+                var b = new byte[512];
                 //blockStorage.WriteBlock(0, b);
-                //blockStorage.WriteBlock(1, b);
+                blockStorage.WriteBlock(1, b);
                 //blockStorage.WriteBlock(2, b);
                 //blockStorage.WriteBlock(3, b);
                 //blockStorage.WriteBlock(4, b);
@@ -110,7 +126,7 @@ namespace FS
                 //};
                 //blockStorage.WriteBlock(3, new[] { new DirectoryHeaderRoot { Header = fsRoot } });
                 //blockStorage.Dispose();
-                //return;
+                return;
 
                 blockStorage.Open();
 

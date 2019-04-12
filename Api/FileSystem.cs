@@ -3,18 +3,17 @@ using FS.Contracts;
 using FS.Contracts.Indexes;
 using FS.Directory;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Runtime.Caching;
 using System.Threading;
 
 namespace FS.Api
 {
-    public sealed class FileSystem : IDisposable, IDirectoryManager
+    public sealed class FileSystem : IDisposable, IDirectoryCache
     {
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
         private readonly Dictionary<int, DirectoryWithRefCount> openedDirectories = new Dictionary<int, DirectoryWithRefCount>();
+        private readonly Dictionary<int, FileWithRefCount> openedFiles = new Dictionary<int, FileWithRefCount>();
         private readonly ReaderWriterLockSlim cacheLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
         private bool isDisposed = false;
@@ -29,23 +28,32 @@ namespace FS.Api
         public static FileSystem Open(string fileName)
         {
             var storage = new BlockStorage(fileName);
-
             storage.Open();
 
-            var header = new FSHeader[1];
-            storage.ReadBlock(0, header);
+            try
+            {
 
-            Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) => {
-                IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header[0].AllocationBlock, m, storage);
-                return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, storage);
-            };
-            var allocationManager = new AllocationManager(allocationIndexFactory, storage, header[0].FreeBlockCount);
+                var header = new FSHeader[1];
+                storage.ReadBlock(0, header);
 
-            var result = new FileSystem(storage, allocationManager);
-            var rootDirectory = ((IDirectoryManager)result).ReadDirectory(header[0].RootDirectoryBlock);
-            result.rootDirectory = rootDirectory;
+                Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) =>
+                {
+                    IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header[0].AllocationBlock, m, storage);
+                    return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, storage);
+                };
+                var allocationManager = new AllocationManager(allocationIndexFactory, storage, header[0].FreeBlockCount);
 
-            return result;
+                var result = new FileSystem(storage, allocationManager);
+                var rootDirectory = ((IDirectoryCache)result).ReadDirectory(header[0].RootDirectoryBlock);
+                result.rootDirectory = rootDirectory;
+
+                return result;
+            }
+            catch
+            {
+                storage.Dispose();
+                throw;
+            }
         }
 
         public static FileSystem Create(string fileName)
@@ -66,6 +74,7 @@ namespace FS.Api
                 {
                     this.allocationManager.Flush();
                     this.storage.Dispose();
+                    this.cacheLock.Dispose();
                 }
 
                 this.isDisposed = true;
@@ -79,11 +88,11 @@ namespace FS.Api
             GC.SuppressFinalize(this);
         }
 
-        IBlockStorage IDirectoryManager.Storage => this.storage;
+        IBlockStorage IDirectoryCache.Storage => this.storage;
 
-        IAllocationManager IDirectoryManager.AllocationManager => this.allocationManager;
+        IAllocationManager IDirectoryCache.AllocationManager => this.allocationManager;
 
-        IDirectory IDirectoryManager.ReadDirectory(int blockId)
+        IDirectory IDirectoryCache.ReadDirectory(int blockId)
         {
             this.cacheLock.EnterUpgradeableReadLock();
             try
@@ -113,7 +122,7 @@ namespace FS.Api
                     }
                     directoryWithRefCount = new DirectoryWithRefCount
                     {
-                        Directory = DirectoryManager.ReadDirectoryUnsafe(blockId, this),
+                        Directory = Directory.Directory.ReadDirectoryUnsafe(blockId, this),
                         RefCount = 1
                     };
                     this.openedDirectories.Add(blockId, directoryWithRefCount);
@@ -130,7 +139,7 @@ namespace FS.Api
             }
         }
 
-        IDirectory IDirectoryManager.RegisterDirectory(IDirectory directory)
+        IDirectory IDirectoryCache.RegisterDirectory(IDirectory directory)
         {
             this.cacheLock.EnterWriteLock();
             try
@@ -160,7 +169,7 @@ namespace FS.Api
             }
         }
 
-        void IDirectoryManager.UnRegisterDirectory(int blockId)
+        void IDirectoryCache.UnRegisterDirectory(int blockId)
         {
             this.cacheLock.EnterWriteLock();
             try
@@ -188,14 +197,110 @@ namespace FS.Api
             }
         }
 
-        IFile IDirectoryManager.RegisterFile(IFile file)
+        IFile IDirectoryCache.ReadFile(int blockId, Func<IFile> readFile)
         {
-            throw new NotImplementedException();
+            this.cacheLock.EnterUpgradeableReadLock();
+            try
+            {
+                FileWithRefCount fileWithRefCount;
+                if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                {
+
+                    var file = Volatile.Read(ref fileWithRefCount.File);
+                    if (file != null)
+                    {
+                        Interlocked.Increment(ref fileWithRefCount.RefCount);
+                        return fileWithRefCount.File;
+                    }
+                }
+
+                this.cacheLock.EnterWriteLock();
+                try
+                {
+                    if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                    {
+                        var file = Volatile.Read(ref fileWithRefCount.File);
+                        if (file != null)
+                        {
+                            Interlocked.Increment(ref fileWithRefCount.RefCount);
+                            return fileWithRefCount.File;
+                        }
+                    }
+                    fileWithRefCount = new FileWithRefCount
+                    {
+                        File = readFile(),
+                        RefCount = 1
+                    };
+                    this.openedFiles.Add(blockId, fileWithRefCount);
+                    return fileWithRefCount.File;
+                }
+                finally
+                {
+                    this.cacheLock.ExitWriteLock();
+                }
+            }
+            finally
+            {
+                this.cacheLock.ExitUpgradeableReadLock();
+            }
         }
 
-        IFile IDirectoryManager.ReadFile(int blockId, Func<IFile> readFile)
+        IFile IDirectoryCache.RegisterFile(IFile file)
         {
-            throw new NotImplementedException();
+            this.cacheLock.EnterWriteLock();
+            try
+            {
+                var blockId = file.BlockId;
+                FileWithRefCount fileWithRefCount;
+                if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                {
+                    var existingFile = Volatile.Read(ref fileWithRefCount.File);
+                    if (existingFile != null)
+                    {
+                        throw new InvalidOperationException($"File with blockId = {file.BlockId} has already been registered");
+                    }
+                }
+
+                fileWithRefCount = new FileWithRefCount
+                {
+                    File = file,
+                    RefCount = 1
+                };
+                this.openedFiles[blockId] = fileWithRefCount;
+                return file;
+            }
+            finally
+            {
+                this.cacheLock.ExitWriteLock();
+            }
+        }
+
+        void IDirectoryCache.UnRegisterFile(int blockId)
+        {
+            this.cacheLock.EnterWriteLock();
+            try
+            {
+                FileWithRefCount fileWithRefCount;
+                if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                {
+                    var existingDirectory = Volatile.Read(ref fileWithRefCount.File);
+                    if (existingDirectory == null)
+                    {
+                        throw new InvalidOperationException($"File with blockId = {blockId} has already been registered");
+                    }
+                    if (Interlocked.Decrement(ref fileWithRefCount.RefCount) == 0)
+                    {
+                        this.openedFiles.Remove(blockId);
+                        fileWithRefCount.File.Dispose();
+                    }
+                    return;
+                }
+                throw new InvalidOperationException($"File with blockId = {blockId} has already been registered");
+            }
+            finally
+            {
+                this.cacheLock.ExitWriteLock();
+            }
         }
 
         ~FileSystem()
@@ -208,6 +313,13 @@ namespace FS.Api
             public int RefCount;
 
             public IDirectory Directory;
+        }
+
+        private class FileWithRefCount
+        {
+            public int RefCount;
+
+            public IFile File;
         }
     }
 }

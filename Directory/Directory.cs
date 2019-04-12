@@ -10,10 +10,10 @@ using System.Threading;
 
 namespace FS.Directory
 {
-    internal class DirectoryManager: IDirectory
+    internal class Directory: IDirectory
     {
         private readonly IIndex<DirectoryItem> index;
-        private readonly IDirectoryManager directoryManager;
+        private readonly IDirectoryCache directoryCache;
         private readonly int parentDirectoryBlockId;
         private readonly BlockStream<DirectoryItem> blockStream;
         private readonly Index<short> nameIndex;
@@ -25,19 +25,19 @@ namespace FS.Directory
         private int itemsCount;
         private int lastNameOffset;
 
-        public DirectoryManager(
+        public Directory(
             IIndex<DirectoryItem> index,
-            IDirectoryManager directoryManager,
+            IDirectoryCache directoryCache,
             DirectoryHeader header)
         {
             this.index = index ?? throw new ArgumentNullException(nameof(index));
-            this.directoryManager = directoryManager ?? throw new ArgumentNullException(nameof(directoryManager));
+            this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             this.blockStream = new BlockStream<DirectoryItem>(index);
             this.nameBlockIndex = header.NameBlockIndex;
 
-            var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.directoryCache.AllocationManager, this.directoryCache.Storage);
             var nameIndexProbiderBlockStream = new BlockStream<int>(nameIndexProvider);
-            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexProbiderBlockStream, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexProbiderBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
             this.nameIndexBlockChain = new BlockStream<short>(this.nameIndex);
 
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
@@ -59,17 +59,17 @@ namespace FS.Directory
                 var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
                 if (entry != null)
                 {
-                    return this.directoryManager.ReadDirectory(entry.BlockId);
+                    return this.directoryCache.ReadDirectory(entry.BlockId);
                 }
 
                 this.indexLock.EnterWriteLock();
                 try
                 {
-                    var blocks = this.directoryManager.AllocationManager.Allocate(2);
+                    var blocks = this.directoryCache.AllocationManager.Allocate(2);
 
-                    var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.directoryManager.AllocationManager, this.directoryManager.Storage);
+                    var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.directoryCache.AllocationManager, this.directoryCache.Storage);
                     var directoryIndexBlockChain = new BlockStream<int>(directoryIndexProvider);
-                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.directoryCache.AllocationManager, this.directoryCache.Storage);
                     directoryIndex.SetSizeInBlocks(1);
                     directoryIndex.Flush();
 
@@ -81,12 +81,12 @@ namespace FS.Directory
                         NameBlockIndex = blocks[0],
                         ParentDirectoryBlockIndex = this.index.BlockId
                     };
-                    var directory = new DirectoryManager(directoryIndex, this.directoryManager, header);
+                    var directory = new Directory(directoryIndex, this.directoryCache, header);
                     directory.UpdateHeader();
 
                     AddEntry(directoryIndex.BlockId, name, DirectoryFlags.Directory);
 
-                    return this.directoryManager.RegisterDirectory(directory);
+                    return this.directoryCache.RegisterDirectory(directory);
                 }
                 finally
                 {
@@ -99,7 +99,7 @@ namespace FS.Directory
             }
         }
 
-        public IFile OpenFile(string name)
+        public IFile OpenFile(string name, OpenMode openMode)
         {
             this.indexLock.EnterUpgradeableReadLock();
             try
@@ -107,22 +107,22 @@ namespace FS.Directory
                 var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
                 if (entry != null)
                 {
-                    return this.directoryManager.ReadFile(
+                    return this.directoryCache.ReadFile(
                         entry.BlockId,
-                        () => new File(this.directoryManager, entry.BlockId, BlockId, entry.Size));
+                        () => new File(this.directoryCache, entry.BlockId, BlockId, entry.Size));
                 }
 
                 this.indexLock.EnterWriteLock();
                 try
                 {
-                    var blocks = this.directoryManager.AllocationManager.Allocate(1);
+                    var blocks = this.directoryCache.AllocationManager.Allocate(1);
                     AddEntry(blocks[0], name, DirectoryFlags.File);
 
-                    var result = new File(this.directoryManager, blocks[0], BlockId, 0);
+                    var result = new File(this.directoryCache, blocks[0], BlockId, 0);
                     result.SetSize(1);
                     result.Flush();
 
-                    return this.directoryManager.RegisterFile(result);
+                    return this.directoryCache.RegisterFile(result);
                 }
                 finally
                 {
@@ -308,14 +308,14 @@ namespace FS.Directory
                 return;
             }
 
-            var directory = this.directoryManager.ReadDirectory(this.parentDirectoryBlockId);
+            var directory = this.directoryCache.ReadDirectory(this.parentDirectoryBlockId);
             try
             {
                 directory.UpdateEntry(this.index.BlockId, new DirectoryEntryInfoOverrides(null, DateTime.Now, null));
             }
             finally
             {
-                this.directoryManager.UnRegisterDirectory(directory.BlockId);
+                this.directoryCache.UnRegisterDirectory(directory.BlockId);
             }
         }
 
@@ -330,7 +330,7 @@ namespace FS.Directory
             return result;
         }
 
-        internal static IDirectory ReadDirectoryUnsafe(int blockId, IDirectoryManager directoryManager)
+        internal static IDirectory ReadDirectoryUnsafe(int blockId, IDirectoryCache directoryManager)
         {
             var indexBlockProvider = new IndexBlockProvier(blockId, directoryManager.AllocationManager, directoryManager.Storage);
             var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), directoryManager.AllocationManager, directoryManager.Storage);
@@ -340,7 +340,7 @@ namespace FS.Directory
             indexStream.Read(0, buffer);
             var header = buffer[0].Header;
 
-            return new DirectoryManager(index, directoryManager, header);
+            return new Directory(index, directoryManager, header);
         }
     }
 }

@@ -6,12 +6,12 @@ namespace FS.Api
 {
     public sealed class DirectoryEntry : IDirectoryEntry
     {
-        private IDirectoryManager directoryManager;
+        private IDirectoryCache directoryManager;
         private IDirectory directory;
         private readonly bool unregisterDirectoryOnDispose;
 
         internal DirectoryEntry(
-            IDirectoryManager directoryManager,
+            IDirectoryCache directoryManager,
             IDirectory directory,
             bool unregisterDirectoryOnDispose = true)
         {
@@ -61,7 +61,8 @@ namespace FS.Api
 
         public IFileEntry OpenFile(string name, OpenMode mode)
         {
-            throw new NotImplementedException();
+            var file = this.directory.OpenFile(name, mode);
+            return new FileEntry(this.directoryManager, file);
         }
     }
 }

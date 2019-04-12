@@ -8,7 +8,7 @@ namespace FS.Directory
     {
         IDirectory OpenDirectory(string name, OpenMode openMode);
 
-        IFile OpenFile(string name);
+        IFile OpenFile(string name, OpenMode openMode);
 
         //void Delete(string name);
 

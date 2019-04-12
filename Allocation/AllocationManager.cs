@@ -1,5 +1,6 @@
 ﻿using FS.Contracts;
 using FS.Contracts.Indexes;
+using FS.Utils;
 using System;
 using System.Linq;
 using System.Threading;
@@ -62,7 +63,7 @@ namespace FS.Allocattion
 
         public void Release(int[] blocks)
         {
-            this.index.SetSizeInBlocks(this.releasedBlockCount + blocks.Length);
+            this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.releasedBlockCount + blocks.Length, this.blockChain.Provider.BlockSize));
             this.blockChain.Write(this.releasedBlockCount, blocks);
             this.releasedBlockCount += blocks.Length;
         }

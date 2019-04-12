@@ -1,14 +1,10 @@
 ﻿using FS.Allocattion;
 using FS.Contracts;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FS.Directory
 {
-    internal interface IDirectoryManager
+    internal interface IDirectoryCache
     {
         IBlockStorage Storage { get; }
 
@@ -23,5 +19,7 @@ namespace FS.Directory
         IFile ReadFile(int blockId, Func<IFile> readFile);
 
         IFile RegisterFile(IFile file);
+
+        void UnRegisterFile(int blockId);
     }
 }

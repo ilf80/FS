@@ -1,21 +1,22 @@
-﻿using FS.Allocattion;
-using FS.Contracts;
+﻿using FS.Contracts;
 using FS.Contracts.Indexes;
 using FS.Utils;
 using System;
+using System.Threading;
 
 namespace FS.Directory
 {
     internal sealed class File : IFile
     {
-        private readonly IDirectoryManager directoryManager;
+        private readonly IDirectoryCache directoryManager;
         private readonly int blockId;
         private readonly int directoryBlookId;
         private readonly BlockStream<byte> blockChain;
         private readonly Index<byte> index;
+        private readonly ReaderWriterLockSlim lockObject = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
         public File(
-            IDirectoryManager directoryManager,
+            IDirectoryCache directoryManager,
             int blockId,
             int directoryBlookId,
             int size)
@@ -40,26 +41,63 @@ namespace FS.Directory
 
         public void Flush()
         {
-            this.index.Flush();
-            UpdateDirectoryEntry();
+            this.lockObject.EnterWriteLock();
+            try
+            {
+                this.index.Flush();
+                UpdateDirectoryEntry();
+            }
+            finally
+            {
+                this.lockObject.ExitWriteLock();
+            }
         }
 
         public void Read(int position, byte[] buffer)
         {
-            this.blockChain.Read(position, buffer);
+            this.lockObject.EnterReadLock();
+            try
+            {
+                this.blockChain.Read(position, buffer);
+            }
+            finally
+            {
+                this.lockObject.ExitReadLock();
+            }
         }
 
         public void SetSize(int size)
         {
-            this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(size, this.index.BlockSize));
-            Size = size;
+            this.lockObject.EnterWriteLock();
+            try
+            {
+                this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(size, this.index.BlockSize));
+                Size = size;
 
-            UpdateDirectoryEntry();
+                UpdateDirectoryEntry();
+            }
+            finally
+            {
+                this.lockObject.ExitWriteLock();
+            }
         }
 
         public void Write(int position, byte[] buffer)
         {
-            this.blockChain.Write(position, buffer);
+            this.lockObject.EnterWriteLock();
+            try
+            {
+                this.blockChain.Write(position, buffer);
+            }
+            finally
+            {
+                this.lockObject.ExitWriteLock();
+            }
+        }
+
+        public void Dispose()
+        {
+            Flush();
         }
 
         private void UpdateDirectoryEntry()

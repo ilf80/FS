@@ -1,8 +1,9 @@
 ﻿using FS.Contracts;
+using System;
 
 namespace FS.Directory
 {
-    internal interface IFile : IBlockHandle, IFlushable
+    internal interface IFile : IBlockHandle, IFlushable, IDisposable
     {
         int Size { get; }
 
