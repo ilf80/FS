@@ -35,6 +35,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -45,15 +46,21 @@
   <ItemGroup>
     <Compile Include="Allocation\AllocationManager.cs" />
     <Compile Include="Allocation\IAllocationManager.cs" />
+    <Compile Include="Api\FileSystem.cs" />
+    <Compile Include="Api\IDirectoryEnry.cs" />
+    <Compile Include="Api\IFileEntry.cs" />
+    <Compile Include="Api\IFileSystemEntry.cs" />
+    <Compile Include="Api\OpenMode.cs" />
     <Compile Include="BlockAccess\BlockStream.cs" />
     <Compile Include="BlockAccess\IBlockProvider.cs" />
     <Compile Include="BlockAccess\IBlockStream.cs" />
     <Compile Include="BlockAccess\BlockStorage.cs" />
     <Compile Include="Contracts\Contracts.cs" />
     <Compile Include="BlockAccess\IBlockStorage.cs" />
-    <Compile Include="Directory\DirectoryEntry.cs" />
+    <Compile Include="Contracts\IBlockHandle.cs" />
     <Compile Include="Directory\DirectoryEntryInfo.cs" />
     <Compile Include="Directory\DirectoryEntryInfoOverrides.cs" />
+    <Compile Include="Directory\DirectoryEntryStruct.cs" />
     <Compile Include="Directory\DirectoryFlags.cs" />
     <Compile Include="Directory\DirectoryHeader.cs" />
     <Compile Include="Directory\DirectoryItem.cs" />
@@ -62,6 +69,7 @@
     <Compile Include="Directory\IDirectory.cs" />
     <Compile Include="Directory\IDirectoryEntryInfo.cs" />
     <Compile Include="Directory\IDirectoryEntryInfoOverrides.cs" />
+    <Compile Include="Directory\IDirectoryManager.cs" />
     <Compile Include="Directory\IFile.cs" />
     <Compile Include="FileManager.cs" />
     <Compile Include="Contracts\IFlushable.cs" />

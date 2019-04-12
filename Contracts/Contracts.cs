@@ -1,4 +1,4 @@
-﻿namespace FS.BlockAccess
+﻿namespace FS.Contracts
 {
     internal static class Constants
     {
@@ -11,10 +11,5 @@
         public const int MaxItemsInIndexPage = IndexPageSize - 1;
 
         public const int IndexEntrySize = 4;
-    }
-
-    internal class IOVoid
-    {
-        public static readonly IOVoid Instance = new IOVoid();
     }
 }

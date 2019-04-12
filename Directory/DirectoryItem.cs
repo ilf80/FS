@@ -6,7 +6,7 @@ namespace FS.Directory
     internal struct DirectoryItem
     {
         [FieldOffset(0)]
-        public DirectoryEntry Entry;
+        public DirectoryEntryStruct Entry;
 
         [FieldOffset(0)]
         public DirectoryHeader Header;

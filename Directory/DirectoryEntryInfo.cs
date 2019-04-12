@@ -4,7 +4,7 @@ namespace FS.Directory
 {
     internal sealed class DirectoryEntryInfo : IDirectoryEntryInfo
     {
-        public DirectoryEntryInfo(DirectoryEntry header, string name)
+        public DirectoryEntryInfo(DirectoryEntryStruct header, string name)
         {
             IsDirectory = header.Flags == DirectoryFlags.Directory;
             Size = header.Size;

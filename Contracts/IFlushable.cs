@@ -1,6 +1,6 @@
-﻿namespace FS.BlockAccess
+﻿namespace FS.Contracts
 {
-    interface IFlushable
+    internal interface IFlushable
     {
         void Flush();
     }

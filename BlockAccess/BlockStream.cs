@@ -1,7 +1,7 @@
 ﻿using FS.Utils;
 using System;
 
-namespace FS.BlockAccess
+namespace FS.Contracts
 {
     internal sealed class BlockStream<T> : IBlockStream<T> where T : struct
     {

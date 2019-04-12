@@ -1,8 +1,8 @@
-﻿using FS.Contracts;
+﻿using System;
 
-namespace FS.Directory
+namespace FS.Api
 {
-    internal interface IFile : IBlockHandle, IFlushable
+    public interface IFileEntry : IDisposable
     {
         int Size { get; }
 
@@ -11,5 +11,7 @@ namespace FS.Directory
         void Write(int position, byte[] buffer);
 
         void SetSize(int size);
+
+        void Flush();
     }
 }

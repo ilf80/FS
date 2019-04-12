@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace FS.BlockAccess
+namespace FS.Contracts
 {
     internal interface IBlockStorage : IDisposable
     {

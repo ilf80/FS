@@ -1,11 +1,15 @@
 ﻿using FS.Allocattion;
-using FS.BlockAccess;
+using FS.Contracts;
 using FS.Directory;
-using FS.BlockAccess.Indexes;
+using FS.Contracts.Indexes;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using bs = FS.BlockAccess.BlockStorage;
+using bs = FS.Contracts.BlockStorage;
+using FS.Api;
+using System.Linq;
+using System.Threading;
+
 namespace FS
 {
     [StructLayout(LayoutKind.Sequential, Size = 512)]
@@ -16,8 +20,64 @@ namespace FS
 
     class Program
     {
+        static void PrindDirectory(IDirectoryEntry root, string path)
+        {
+            if (path == "ROOT/Dir 9/Dir 9.1") return;
+
+            var entries = root.GetEntries();
+
+            foreach (var entry in entries.Where(x => x.IsDirectory).OrderBy(x => x.Name))
+            {
+                Console.WriteLine($"{path}/{entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
+                using (var d = root.OpenDirectory(entry.Name, OpenMode.OpenExisting))
+                {
+                    PrindDirectory(d, path + "/" + entry.Name);
+                }
+            }
+
+            foreach (var entry in entries.Where(x => !x.IsDirectory).OrderBy(x => x.Name))
+            {
+                Console.WriteLine($"{path}/{entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
+            }
+
+            
+        }
         static async Task Main(string[] args)
         {
+            using (var fs = FileSystem.Open("TestFile.dat"))
+            {
+                var root = fs.GetRootDirectory();
+
+                PrindDirectory(root, "ROOT");
+
+                using (var d = root.OpenDirectory("Dir 8", OpenMode.OpenExisting))
+                {
+                    var t = new Task(() =>
+                    {
+                        for (int i = 100; i < 200; i++)
+                        {
+                            d.OpenDirectory("Dir 8." + i + "." + Thread.CurrentThread.ManagedThreadId, OpenMode.OpenOrCreate);
+                        }
+                    });
+
+                    var t2 = new Task(() =>
+                    {
+                        for (int i = 100; i < 200; i++)
+                        {
+                            d.OpenDirectory("Dir 8." + i + "." + Thread.CurrentThread.ManagedThreadId, OpenMode.OpenOrCreate);
+                        }
+                    });
+
+                    //t.Start(); t2.Start();
+
+                    //Task.WaitAll(t, t2);
+
+                    //d.OpenDirectory("Dir 9.1", OpenMode.OpenOrCreate);
+                    //d.OpenDirectory("Dir 9.2", OpenMode.OpenOrCreate);
+                }
+            }
+
+                return;
             var taskFactory = new TaskFactory(TaskCreationOptions.None, TaskContinuationOptions.ExecuteSynchronously);
             using (var blockStorage = new bs("TestFile.dat"))
             {
@@ -70,7 +130,7 @@ namespace FS
                 //index.SetSizeInBlocks(1);
                 //index.Flush();
 
-                var rootDir = DirectoryManager.ReadDirectory(header[0].RootDirectoryBlock, blockStorage, allocationManager);
+//                var rootDir = DirectoryManager.ReadDirectory(header[0].RootDirectoryBlock, blockStorage, allocationManager);
 
                 //rootDir.OpenDirectory("Test");
 
@@ -79,13 +139,13 @@ namespace FS
                 //    rootDir.OpenDirectory("Dir " + i);
                 //}
 
-                var file = rootDir.OpenFile("Test File 3");
+//                var file = rootDir.OpenFile("Test File 3");
                 //file.SetSize(128);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
                 //file.Flush();
 
                 var buffer = new byte[10];
-                file.Read(0, buffer);
+//                file.Read(0, buffer);
 
                 for(var i = 0; i < buffer.Length; i++)
                 {
@@ -94,15 +154,15 @@ namespace FS
                 }
                 Console.WriteLine();
 
-                var dir = rootDir.OpenDirectory("Dir 0");
+//                var dir = rootDir.OpenDirectory("Dir 0");
                 //dir.OpenDirectory("Dir 0.1");
                 //dir.OpenDirectory("Dir 0.2");
 
-                foreach (var entry in dir.GetDirectoryEntries())
-                {
-                    Console.WriteLine($"Enrty: Name Dir 0/{entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
-                }
-                dir.Flush();
+                //foreach (var entry in dir.GetDirectoryEntries())
+                //{
+                //    Console.WriteLine($"Enrty: Name Dir 0/{entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
+                //}
+                //dir.Flush();
 
                 //file.SetSize(200);
                 //file.Write(0, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
@@ -112,10 +172,10 @@ namespace FS
 
                 //rootDir.CreateDirectory(new string('1', 250000000));
 
-                foreach (var entry in rootDir.GetDirectoryEntries())
-                {
-                    Console.WriteLine($"Enrty: Name {entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
-                }
+                ////foreach (var entry in rootDir.GetDirectoryEntries())
+                ////{
+                ////    Console.WriteLine($"Enrty: Name {entry.Name}, Directory { entry.IsDirectory }, Size {entry.Size}, Created {entry.Created}, Updated {entry.Updated} ");
+                ////}
 
 
                 //rootDir.CreateDirectory("Test1");
@@ -125,7 +185,7 @@ namespace FS
 
                 //index.Flush();
 
-                rootDir.Flush();
+                //rootDir.Flush();
                 allocationManager.Flush();
 
                 header[0].FreeBlockCount = allocationManager.ReleasedBlockCount;

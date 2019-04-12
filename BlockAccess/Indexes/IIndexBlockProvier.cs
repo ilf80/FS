@@ -1,4 +1,4 @@
-﻿namespace FS.BlockAccess.Indexes
+﻿namespace FS.Contracts.Indexes
 {
     internal interface IIndexBlockProvier : IBlockProvider<int>, IFlushable
     {

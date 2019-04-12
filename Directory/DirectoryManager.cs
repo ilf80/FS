@@ -1,22 +1,25 @@
 ﻿using FS.Allocattion;
-using FS.BlockAccess;
-using FS.BlockAccess.Indexes;
+using FS.Api;
+using FS.Contracts;
+using FS.Contracts.Indexes;
 using FS.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace FS.Directory
 {
     internal class DirectoryManager: IDirectory
     {
         private readonly IIndex<DirectoryItem> index;
-        private readonly IBlockStorage storage;
-        private readonly IAllocationManager allocationManager;
+        private readonly IDirectoryManager directoryManager;
         private readonly int parentDirectoryBlockId;
         private readonly BlockStream<DirectoryItem> blockStream;
         private readonly Index<short> nameIndex;
-        private BlockStream<short> nameIndexBlockChain;
+        private readonly BlockStream<short> nameIndexBlockChain;
+        private readonly ReaderWriterLockSlim indexLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+
         private int nameBlockIndex;
         private int firstEmptyItemOffset;
         private int itemsCount;
@@ -24,19 +27,17 @@ namespace FS.Directory
 
         public DirectoryManager(
             IIndex<DirectoryItem> index,
-            IBlockStorage storage,
-            IAllocationManager allocationManager,
+            IDirectoryManager directoryManager,
             DirectoryHeader header)
         {
             this.index = index ?? throw new ArgumentNullException(nameof(index));
-            this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
+            this.directoryManager = directoryManager ?? throw new ArgumentNullException(nameof(directoryManager));
             this.blockStream = new BlockStream<DirectoryItem>(index);
             this.nameBlockIndex = header.NameBlockIndex;
 
-            var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.allocationManager, this.storage);
-            var nameIndexBlockStream = new BlockStream<int>(nameIndexProvider);
-            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexBlockStream, this.storage, this.allocationManager);
+            var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            var nameIndexProbiderBlockStream = new BlockStream<int>(nameIndexProvider);
+            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexProbiderBlockStream, this.directoryManager.Storage, this.directoryManager.AllocationManager);
             this.nameIndexBlockChain = new BlockStream<short>(this.nameIndex);
 
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
@@ -45,130 +46,178 @@ namespace FS.Directory
             this.parentDirectoryBlockId = header.ParentDirectoryBlockIndex;
         }
 
-        public IDirectory OpenDirectory(string name)
+        public int BlockId
         {
-            var entries = GetDirectoryEntries();
-            var entry = entries.FirstOrDefault(x => x.Name == name);
-            if (entry != null)
-            {
-                return ReadDirectory(entry.BlockId, this.storage, this.allocationManager);
-            }
-
-            var blocks = this.allocationManager.Allocate(2);
-
-            var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.allocationManager, this.storage);
-            var directoryIndexBlockChain = new BlockStream<int>(directoryIndexProvider);
-            var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.storage, this.allocationManager);
-            directoryIndex.SetSizeInBlocks(1);
-            directoryIndex.Flush();
-
-            var header = new DirectoryHeader
-            {
-                FirstEmptyItemOffset = 1,
-                ItemsCount = 0,
-                LastNameOffset = 0,
-                NameBlockIndex = blocks[0],
-                ParentDirectoryBlockIndex = this.index.BlockId
-            };
-            var directory = new DirectoryManager(directoryIndex, this.storage, this.allocationManager, header);
-            directory.UpdateHeader();
-
-            AddEntry(directoryIndex.BlockId, name, DirectoryFlags.Directory);
-
-
-            return directory;
+            get { return this.index.BlockId; }
         }
 
-        public IDirectoryEntryInfo[] GetDirectoryEntries()
+        public IDirectory OpenDirectory(string name, OpenMode openMode)
         {
-            var buffer = new DirectoryItem[this.itemsCount];
-            this.blockStream.Read(1, buffer);
-
-            var names = new short[this.lastNameOffset];
-            this.nameIndexBlockChain.Read(0, names);
-
-            var result = new List<IDirectoryEntryInfo>(this.itemsCount);
-            foreach(var item in buffer)
+            this.indexLock.EnterUpgradeableReadLock();
+            try
             {
-                var entry = item.Entry;
-
-                var nameLength = names[entry.NameOffset];
-                var nameBuffer = new char[nameLength];
-                for(var i = 0; i < nameLength; i++)
+                var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
+                if (entry != null)
                 {
-                    nameBuffer[i] = (char)names[entry.NameOffset + 1 + i];
+                    return this.directoryManager.ReadDirectory(entry.BlockId);
                 }
 
-                result.Add(new DirectoryEntryInfo(entry, new string(nameBuffer)));
+                this.indexLock.EnterWriteLock();
+                try
+                {
+                    var blocks = this.directoryManager.AllocationManager.Allocate(2);
+
+                    var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.directoryManager.AllocationManager, this.directoryManager.Storage);
+                    var directoryIndexBlockChain = new BlockStream<int>(directoryIndexProvider);
+                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.directoryManager.Storage, this.directoryManager.AllocationManager);
+                    directoryIndex.SetSizeInBlocks(1);
+                    directoryIndex.Flush();
+
+                    var header = new DirectoryHeader
+                    {
+                        FirstEmptyItemOffset = 1,
+                        ItemsCount = 0,
+                        LastNameOffset = 0,
+                        NameBlockIndex = blocks[0],
+                        ParentDirectoryBlockIndex = this.index.BlockId
+                    };
+                    var directory = new DirectoryManager(directoryIndex, this.directoryManager, header);
+                    directory.UpdateHeader();
+
+                    AddEntry(directoryIndex.BlockId, name, DirectoryFlags.Directory);
+
+                    return this.directoryManager.RegisterDirectory(directory);
+                }
+                finally
+                {
+                    this.indexLock.ExitWriteLock();
+                }
             }
-            return result.ToArray();
+            finally
+            {
+                this.indexLock.ExitUpgradeableReadLock();
+            }
         }
 
         public IFile OpenFile(string name)
         {
-            var entries = GetDirectoryEntries();
-            var entry = entries.FirstOrDefault(x => x.Name == name);
-            if (entry != null)
+            this.indexLock.EnterUpgradeableReadLock();
+            try
             {
-                return new File(this.storage, this.allocationManager, entry.BlockId, this.index.BlockId, entry.Size);
+                var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
+                if (entry != null)
+                {
+                    return this.directoryManager.ReadFile(
+                        entry.BlockId,
+                        () => new File(this.directoryManager, entry.BlockId, BlockId, entry.Size));
+                }
+
+                this.indexLock.EnterWriteLock();
+                try
+                {
+                    var blocks = this.directoryManager.AllocationManager.Allocate(1);
+                    AddEntry(blocks[0], name, DirectoryFlags.File);
+
+                    var result = new File(this.directoryManager, blocks[0], BlockId, 0);
+                    result.SetSize(1);
+                    result.Flush();
+
+                    return this.directoryManager.RegisterFile(result);
+                }
+                finally
+                {
+                    this.indexLock.ExitWriteLock();
+                }
             }
-
-            var blocks = this.allocationManager.Allocate(1);
-            AddEntry(blocks[0], name, DirectoryFlags.File);
-
-            var result = new File(this.storage, this.allocationManager, blocks[0], this.index.BlockId, 0);
-            result.SetSize(1);
-            result.Flush();
-
-            return result;
+            finally
+            {
+                this.indexLock.ExitUpgradeableReadLock();
+            }
         }
 
-        public static IDirectory ReadDirectory(
-            int blockIndex, 
-            IBlockStorage storage,
-            IAllocationManager allocationManager)
+        public IDirectoryEntryInfo[] GetDirectoryEntries()
         {
-            var indexBlockProvider = new IndexBlockProvier(blockIndex, allocationManager, storage);
-            var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), storage, allocationManager);
-            var indexStream = new BlockStream<DirectoryItem>(index);
+            List<IDirectoryEntryInfo> result;
 
-            var buffer = new DirectoryItem[1];
-            indexStream.Read(0, buffer);
-            var header = buffer[0].Header;
+            this.indexLock.EnterReadLock();
+            try
+            {
+                var buffer = new DirectoryItem[this.itemsCount];
+                this.blockStream.Read(1, buffer);
 
-            return new DirectoryManager(index, storage, allocationManager, header);
+                var names = new short[this.lastNameOffset];
+                this.nameIndexBlockChain.Read(0, names);
+
+                result = new List<IDirectoryEntryInfo>(this.itemsCount);
+                foreach (var item in buffer)
+                {
+                    var entry = item.Entry;
+
+                    var nameLength = names[entry.NameOffset];
+                    var nameBuffer = new char[nameLength];
+                    for (var i = 0; i < nameLength; i++)
+                    {
+                        nameBuffer[i] = (char)names[entry.NameOffset + 1 + i];
+                    }
+
+                    result.Add(new DirectoryEntryInfo(entry, new string(nameBuffer)));
+                }
+            }
+            finally
+            {
+                this.indexLock.ExitReadLock();
+            }
+
+            return result.ToArray();
         }
 
         public void Flush()
         {
-            this.index.Flush();
-            this.nameIndex.Flush();
+            this.indexLock.EnterReadLock();
+            try
+            {
+                this.index.Flush();
+                this.nameIndex.Flush();
+            }
+            finally
+            {
+                this.indexLock.ExitReadLock();
+            }
         }
 
         public void Dispose()
         {
+            this.indexLock.Dispose();
         }
 
         public void UpdateEntry(int blockId, IDirectoryEntryInfoOverrides overrides)
         {
-            var buffer = new DirectoryItem[this.itemsCount];
-            this.blockStream.Read(1, buffer);
-
-            for(var i = 0; i < buffer.Length; i++)
+            this.indexLock.EnterWriteLock();
+            try
             {
-                var entry = buffer[i];
-                if (entry.Entry.BlockIndex == blockId)
+                var buffer = new DirectoryItem[this.itemsCount];
+                this.blockStream.Read(1, buffer);
+
+                for (var i = 0; i < buffer.Length; i++)
                 {
-                    ApplyOverrides(ref entry.Entry, overrides);
-                    this.blockStream.Write(i + 1, new[] { entry });
-                    return;
+                    var entry = buffer[i];
+                    if (entry.Entry.BlockIndex == blockId)
+                    {
+                        ApplyOverrides(ref entry.Entry, overrides);
+                        this.blockStream.Write(i + 1, new[] { entry });
+                        return;
+                    }
                 }
+            }
+            finally
+            {
+                this.indexLock.ExitWriteLock();
             }
 
             throw new Exception("Entry not found");
         }
 
-        private void ApplyOverrides(ref DirectoryEntry entry, IDirectoryEntryInfoOverrides overrides)
+        private void ApplyOverrides(ref DirectoryEntryStruct entry, IDirectoryEntryInfoOverrides overrides)
         {
             entry.Size = overrides.Size ?? entry.Size;
             entry.Updated = overrides.Updated.HasValue ? overrides.Updated.Value.Ticks : entry.Updated;
@@ -176,19 +225,27 @@ namespace FS.Directory
 
         private void AddEntry(int blockId, string name, DirectoryFlags flags)
         {
-            var directoryEntryItem = new DirectoryItem
+            this.indexLock.EnterWriteLock();
+            try
             {
-                Entry = new DirectoryEntry
+                var directoryEntryItem = new DirectoryItem
                 {
-                    BlockIndex = blockId,
-                    Created = DateTime.Now.Ticks,
-                    Updated = DateTime.Now.Ticks,
-                    Size = 0,
-                    Flags = flags,
-                    NameOffset = StoreName(name)
-                }
-            };
-            AddEntry(directoryEntryItem);
+                    Entry = new DirectoryEntryStruct
+                    {
+                        BlockIndex = blockId,
+                        Created = DateTime.Now.Ticks,
+                        Updated = DateTime.Now.Ticks,
+                        Size = 0,
+                        Flags = flags,
+                        NameOffset = StoreName(name)
+                    }
+                };
+                AddEntry(directoryEntryItem);
+            }
+            finally
+            {
+                this.indexLock.ExitWriteLock();
+            }
         }
         private void AddEntry(DirectoryItem directoryEntryItem)
         {
@@ -251,9 +308,14 @@ namespace FS.Directory
                 return;
             }
 
-            using (var directory = DirectoryManager.ReadDirectory(this.parentDirectoryBlockId, this.storage, this.allocationManager))
+            var directory = this.directoryManager.ReadDirectory(this.parentDirectoryBlockId);
+            try
             {
                 directory.UpdateEntry(this.index.BlockId, new DirectoryEntryInfoOverrides(null, DateTime.Now, null));
+            }
+            finally
+            {
+                this.directoryManager.UnRegisterDirectory(directory.BlockId);
             }
         }
 
@@ -266,6 +328,19 @@ namespace FS.Directory
 
             this.lastNameOffset += name.Length + 1;
             return result;
+        }
+
+        internal static IDirectory ReadDirectoryUnsafe(int blockId, IDirectoryManager directoryManager)
+        {
+            var indexBlockProvider = new IndexBlockProvier(blockId, directoryManager.AllocationManager, directoryManager.Storage);
+            var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), directoryManager.Storage, directoryManager.AllocationManager);
+            var indexStream = new BlockStream<DirectoryItem>(index);
+
+            var buffer = new DirectoryItem[1];
+            indexStream.Read(0, buffer);
+            var header = buffer[0].Header;
+
+            return new DirectoryManager(index, directoryManager, header);
         }
     }
 }

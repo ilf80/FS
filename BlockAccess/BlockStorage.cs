@@ -1,10 +1,8 @@
-﻿using FS.BlockAccess;
-using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace FS.BlockAccess
+namespace FS.Contracts
 {
     internal class BlockStorage : IBlockStorage
     {

@@ -1,5 +1,5 @@
-﻿using FS.BlockAccess;
-using FS.BlockAccess.Indexes;
+﻿using FS.Contracts;
+using FS.Contracts.Indexes;
 using System;
 using System.Linq;
 using System.Threading;

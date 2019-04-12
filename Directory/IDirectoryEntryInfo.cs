@@ -3,7 +3,7 @@
 namespace FS.Directory
 {
 
-    public interface IDirectoryEntryInfo
+    internal interface IDirectoryEntryInfo
     {
         bool IsDirectory { get; }
 

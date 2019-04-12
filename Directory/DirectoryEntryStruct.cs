@@ -3,7 +3,7 @@
 namespace FS.Directory
 {
     [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 32)]
-    internal struct DirectoryEntry
+    internal struct DirectoryEntryStruct
     {
         [FieldOffset(0)]
         public DirectoryFlags Flags;

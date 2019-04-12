@@ -1,6 +1,6 @@
 ﻿using FS.Allocattion;
-using FS.BlockAccess;
-using FS.BlockAccess.Indexes;
+using FS.Contracts;
+using FS.Contracts.Indexes;
 using FS.Utils;
 using System;
 
@@ -8,32 +8,36 @@ namespace FS.Directory
 {
     internal sealed class File : IFile
     {
-        private readonly IBlockStorage storage;
-        private readonly IAllocationManager allocationManager;
+        private readonly IDirectoryManager directoryManager;
         private readonly int blockId;
         private readonly int directoryBlookId;
         private readonly BlockStream<byte> blockChain;
         private readonly Index<byte> index;
 
         public File(
-            IBlockStorage storage,
-            IAllocationManager allocationManager,
+            IDirectoryManager directoryManager,
             int blockId,
             int directoryBlookId,
             int size)
         {
-            this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
+            this.directoryManager = directoryManager ?? throw new ArgumentNullException(nameof(directoryManager));
             this.blockId = blockId;
             this.directoryBlookId = directoryBlookId;
-            var provider = new IndexBlockProvier(blockId, this.allocationManager, this.storage);
+
+            var provider = new IndexBlockProvier(blockId, this.directoryManager.AllocationManager, this.directoryManager.Storage);
             var indexBlockChain = new BlockStream<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.storage, this.allocationManager);
+            this.index = new Index<byte>(provider, indexBlockChain, this.directoryManager.Storage, this.directoryManager.AllocationManager);
             this.blockChain = new BlockStream<byte>(this.index);
             Size = size;
         }
 
+        public int BlockId
+        {
+            get { return this.index.BlockId; }
+        }
+
         public int Size { get; private set; }
+
         public void Flush()
         {
             this.index.Flush();
@@ -60,9 +64,14 @@ namespace FS.Directory
 
         private void UpdateDirectoryEntry()
         {
-            using (var directory = DirectoryManager.ReadDirectory(this.directoryBlookId, this.storage, this.allocationManager))
+            var directory = this.directoryManager.ReadDirectory(this.directoryBlookId);
+            try
             {
                 directory.UpdateEntry(this.blockId, new DirectoryEntryInfoOverrides(Size, DateTime.Now, null));
+            }
+            finally
+            {
+                this.directoryManager.UnRegisterDirectory(directory.BlockId);
             }
         }
     }
