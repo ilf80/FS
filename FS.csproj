@@ -73,7 +73,7 @@
     <Compile Include="Directory\IDirectoryEntryInfoOverrides.cs" />
     <Compile Include="Directory\IDirectoryManager.cs" />
     <Compile Include="Directory\IFile.cs" />
-    <Compile Include="FileManager.cs" />
+    <Compile Include="Api\FSHeader.cs" />
     <Compile Include="Contracts\IFlushable.cs" />
     <Compile Include="BlockAccess\Indexes\IIndex.cs" />
     <Compile Include="BlockAccess\Indexes\IIndexBlockProvier.cs" />

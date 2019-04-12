@@ -1,12 +1,7 @@
 ﻿using FS.Directory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace FS
+namespace FS.Api
 {
     [StructLayout(LayoutKind.Explicit, Size = 512)]
     internal struct FSHeader
@@ -22,9 +17,5 @@ namespace FS
 
         [FieldOffset(12)]
         public DirectoryHeader RootDirectoryHeader;
-    }
-
-    class FileManager
-    {
     }
 }
