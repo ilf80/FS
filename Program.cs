@@ -120,7 +120,7 @@ namespace FS
 
                 Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) => {
                     IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header[0].AllocationBlock, m, blockStorage);
-                    return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), blockStorage, m);
+                    return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, blockStorage);
                 };
                 var allocationManager = new AllocationManager(allocationIndexFactory, blockStorage, header[0].FreeBlockCount);
 

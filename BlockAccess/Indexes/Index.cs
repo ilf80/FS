@@ -16,8 +16,8 @@ namespace FS.Contracts.Indexes
         public Index(
             IIndexBlockProvier provider,
             IBlockStream<int> blockChain,
-            IBlockStorage storage,
-            IAllocationManager allocationManager)
+            IAllocationManager allocationManager,
+            IBlockStorage storage)
         {
             this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
             this.indexBlockChain = blockChain ?? throw new ArgumentNullException(nameof(blockChain));

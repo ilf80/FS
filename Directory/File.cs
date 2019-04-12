@@ -26,7 +26,7 @@ namespace FS.Directory
 
             var provider = new IndexBlockProvier(blockId, this.directoryManager.AllocationManager, this.directoryManager.Storage);
             var indexBlockChain = new BlockStream<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.directoryManager.Storage, this.directoryManager.AllocationManager);
+            this.index = new Index<byte>(provider, indexBlockChain, this.directoryManager.AllocationManager, this.directoryManager.Storage);
             this.blockChain = new BlockStream<byte>(this.index);
             Size = size;
         }

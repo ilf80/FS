@@ -37,7 +37,7 @@ namespace FS.Directory
 
             var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.directoryManager.AllocationManager, this.directoryManager.Storage);
             var nameIndexProbiderBlockStream = new BlockStream<int>(nameIndexProvider);
-            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexProbiderBlockStream, this.directoryManager.Storage, this.directoryManager.AllocationManager);
+            this.nameIndex = new Index<short>(nameIndexProvider, nameIndexProbiderBlockStream, this.directoryManager.AllocationManager, this.directoryManager.Storage);
             this.nameIndexBlockChain = new BlockStream<short>(this.nameIndex);
 
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
@@ -69,7 +69,7 @@ namespace FS.Directory
 
                     var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.directoryManager.AllocationManager, this.directoryManager.Storage);
                     var directoryIndexBlockChain = new BlockStream<int>(directoryIndexProvider);
-                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.directoryManager.Storage, this.directoryManager.AllocationManager);
+                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.directoryManager.AllocationManager, this.directoryManager.Storage);
                     directoryIndex.SetSizeInBlocks(1);
                     directoryIndex.Flush();
 
@@ -333,7 +333,7 @@ namespace FS.Directory
         internal static IDirectory ReadDirectoryUnsafe(int blockId, IDirectoryManager directoryManager)
         {
             var indexBlockProvider = new IndexBlockProvier(blockId, directoryManager.AllocationManager, directoryManager.Storage);
-            var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), directoryManager.Storage, directoryManager.AllocationManager);
+            var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), directoryManager.AllocationManager, directoryManager.Storage);
             var indexStream = new BlockStream<DirectoryItem>(index);
 
             var buffer = new DirectoryItem[1];
