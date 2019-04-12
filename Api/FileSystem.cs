@@ -32,22 +32,10 @@ namespace FS.Api
 
             try
             {
-
                 var header = new FSHeader[1];
                 storage.ReadBlock(0, header);
 
-                Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) =>
-                {
-                    IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header[0].AllocationBlock, m, storage);
-                    return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, storage);
-                };
-                var allocationManager = new AllocationManager(allocationIndexFactory, storage, header[0].FreeBlockCount);
-
-                var result = new FileSystem(storage, allocationManager);
-                var rootDirectory = ((IDirectoryCache)result).ReadDirectory(header[0].RootDirectoryBlock);
-                result.rootDirectory = rootDirectory;
-
-                return result;
+                return ReadFromHeader(header[0], storage);
             }
             catch
             {
@@ -56,9 +44,62 @@ namespace FS.Api
             }
         }
 
+        private static FileSystem ReadFromHeader(FSHeader header, IBlockStorage storage)
+        {
+            Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) =>
+            {
+                IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header.AllocationBlock, m, storage);
+                return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, storage);
+            };
+            var allocationManager = new AllocationManager(allocationIndexFactory, storage, header.FreeBlockCount);
+
+            var result = new FileSystem(storage, allocationManager);
+            var rootDirectory = ((IDirectoryCache)result).ReadDirectory(header.RootDirectoryBlock);
+            result.rootDirectory = rootDirectory;
+
+            return result;
+        }
+
         public static FileSystem Create(string fileName)
         {
-            throw new NotImplementedException();
+            var storage = new BlockStorage(fileName);
+            storage.Open();
+
+            try
+            {
+                var buffer = new byte[512];
+                var fsHeader = new FSHeader
+                {
+                    AllocationBlock = 1,
+                    RootDirectoryBlock = 2,
+                    FreeBlockCount = 0
+                };
+                storage.WriteBlock(0, new[] { fsHeader });
+                storage.WriteBlock(1, buffer);
+
+                buffer[0] = 3;
+                storage.WriteBlock(2, buffer);
+
+                var fsRoot = new DirectoryHeader
+                {
+                    FirstEmptyItemOffset = 1,
+                    ItemsCount = 0,
+                    LastNameOffset = 0,
+                    NameBlockIndex = 4,
+                    ParentDirectoryBlockIndex = 2
+                };
+                storage.WriteBlock(3, new[] { new DirectoryHeaderRoot { Header = fsRoot } });
+
+                buffer[0] = 0;
+                storage.WriteBlock(4, buffer);
+
+                return ReadFromHeader(fsHeader, storage);
+            }
+            catch
+            {
+                storage.Dispose();
+                throw;
+            }
         }
 
         public IDirectoryEntry GetRootDirectory()
@@ -72,6 +113,8 @@ namespace FS.Api
             {
                 if (disposing)
                 {
+                    WriteHeader();
+                    this.rootDirectory.Flush();
                     this.allocationManager.Flush();
                     this.storage.Dispose();
                     this.cacheLock.Dispose();
@@ -79,6 +122,17 @@ namespace FS.Api
 
                 this.isDisposed = true;
             }
+        }
+
+        private void WriteHeader()
+        {
+            var fsHeader = new FSHeader
+            {
+                AllocationBlock = this.allocationManager.BlockId,
+                RootDirectoryBlock = this.rootDirectory.BlockId,
+                FreeBlockCount = this.allocationManager.ReleasedBlockCount
+            };
+            this.storage.WriteBlock(0, new[] { fsHeader });
         }
 
         public void Dispose()

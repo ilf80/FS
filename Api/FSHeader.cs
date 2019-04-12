@@ -14,8 +14,11 @@ namespace FS.Api
 
         [FieldOffset(8)]
         public int RootDirectoryBlock;
+    }
 
-        [FieldOffset(12)]
-        public DirectoryHeader RootDirectoryHeader;
+    [StructLayout(LayoutKind.Sequential, Size = 512)]
+    internal struct DirectoryHeaderRoot
+    {
+        public DirectoryHeader Header;
     }
 }

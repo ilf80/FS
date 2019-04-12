@@ -9,5 +9,7 @@ namespace FS.Directory
         DateTime? Updated { get; }
 
         string Name { get; }
+
+        DirectoryFlags? Flags { get; }
     }
 }

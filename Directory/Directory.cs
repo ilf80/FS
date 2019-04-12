@@ -135,6 +135,43 @@ namespace FS.Directory
             }
         }
 
+        public void DeleteFile(string name)
+        {
+            this.indexLock.EnterUpgradeableReadLock();
+            try
+            {
+                var entry = GetDirectoryEntries().Where(x => !x.IsDirectory && x.Name == name).FirstOrDefault();
+                if (entry == null)
+                {
+                    throw new InvalidOperationException($"File with name '{name}' does not exist");
+                }
+
+                this.indexLock.EnterWriteLock();
+                try
+                {
+                    var deletionFile = new DeletionFile(this.directoryCache, entry.BlockId, BlockId, entry.Size);
+                    var resultFile = this.directoryCache.ReadFile(
+                        entry.BlockId,
+                        () => deletionFile);
+
+                    if (deletionFile != resultFile)
+                    {
+                        throw new InvalidOperationException($"File with name '{name}' is in use");
+                    }
+                    deletionFile.Delete();
+                }
+                finally
+                {
+                    this.indexLock.ExitWriteLock();
+                }
+            }
+            finally
+            {
+                this.indexLock.ExitUpgradeableReadLock();
+            }
+
+        }
+
         public IDirectoryEntryInfo[] GetDirectoryEntries()
         {
             List<IDirectoryEntryInfo> result;
@@ -149,7 +186,7 @@ namespace FS.Directory
                 this.nameIndexBlockChain.Read(0, names);
 
                 result = new List<IDirectoryEntryInfo>(this.itemsCount);
-                foreach (var item in buffer)
+                foreach (var item in buffer.Where(x => (x.Entry.Flags & DirectoryFlags.Deleted) == 0))
                 {
                     var entry = item.Entry;
 
@@ -201,7 +238,7 @@ namespace FS.Directory
                 for (var i = 0; i < buffer.Length; i++)
                 {
                     var entry = buffer[i];
-                    if (entry.Entry.BlockIndex == blockId)
+                    if (entry.Entry.BlockIndex == blockId && (entry.Entry.Flags & DirectoryFlags.Deleted) == 0)
                     {
                         ApplyOverrides(ref entry.Entry, overrides);
                         this.blockStream.Write(i + 1, new[] { entry });
@@ -221,6 +258,7 @@ namespace FS.Directory
         {
             entry.Size = overrides.Size ?? entry.Size;
             entry.Updated = overrides.Updated.HasValue ? overrides.Updated.Value.Ticks : entry.Updated;
+            entry.Flags = overrides.Flags ?? entry.Flags;
         }
 
         private void AddEntry(int blockId, string name, DirectoryFlags flags)

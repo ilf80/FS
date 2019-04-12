@@ -61,6 +61,7 @@
     <Compile Include="Contracts\Contracts.cs" />
     <Compile Include="BlockAccess\IBlockStorage.cs" />
     <Compile Include="Contracts\IBlockHandle.cs" />
+    <Compile Include="Directory\DeletionFile.cs" />
     <Compile Include="Directory\Directory.cs" />
     <Compile Include="Directory\DirectoryEntryInfo.cs" />
     <Compile Include="Directory\DirectoryEntryInfoOverrides.cs" />
@@ -90,4 +91,7 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy $(SolutionDir)Program.cs $(TargetDir)Program.cs</PostBuildEvent>
+  </PropertyGroup>
 </Project>

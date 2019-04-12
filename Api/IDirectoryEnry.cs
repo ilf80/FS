@@ -10,6 +10,8 @@ namespace FS.Api
 
         IFileEntry OpenFile(string name, OpenMode mode);
 
+        void DeleteFile(string name);
+
         IDirectoryEntry OpenDirectory(string name, OpenMode mode);
 
         void Flush();

@@ -33,6 +33,8 @@ namespace FS.Allocattion
 
         public int ReleasedBlockCount => this.releasedBlockCount;
 
+        public int BlockId => this.index.BlockId;
+
         public int[] Allocate(int blockCount)
         {
             CheckSize(blockCount);

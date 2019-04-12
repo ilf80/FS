@@ -64,5 +64,10 @@ namespace FS.Api
             var file = this.directory.OpenFile(name, mode);
             return new FileEntry(this.directoryManager, file);
         }
+
+        public void DeleteFile(string name)
+        {
+            this.directory.DeleteFile(name);            
+        }
     }
 }

@@ -10,11 +10,7 @@ namespace FS.Directory
 
         IFile OpenFile(string name, OpenMode openMode);
 
-        //void Delete(string name);
-
-        //void Rename(string name, string newName);
-
-        //bool Exists(string name);
+        void DeleteFile(string name);
 
         IDirectoryEntryInfo[] GetDirectoryEntries();
 
