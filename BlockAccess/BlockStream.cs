@@ -1,7 +1,7 @@
 ﻿using FS.Utils;
 using System;
 
-namespace FS.Contracts
+namespace FS.BlockAccess
 {
     internal sealed class BlockStream<T> : IBlockStream<T> where T : struct
     {
@@ -83,6 +83,19 @@ namespace FS.Contracts
 
         private void CheckOuOfBounds(int position, int length)
         {
+            if (position < 0)
+            {
+                throw new ArgumentOutOfRangeException($"position={position} cannot be negative.");
+            }
+            if (Provider.SizeInBlocks == 0)
+            {
+                throw new InvalidOperationException("BlockProvider is empty");
+            }
+            var blockIndex = Helpers.ModBaseWithFloor(position, Provider.BlockSize);
+            if (blockIndex >= Provider.SizeInBlocks)
+            {
+                throw new InvalidOperationException($"Adressed position {position} with buffer.length {length} are out of Provider blocks space");
+            }
         }
     }
 }

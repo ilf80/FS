@@ -1,4 +1,4 @@
-﻿namespace FS.Contracts
+﻿namespace FS.BlockAccess
 {
     internal interface IBlockStream<T> where T : struct
     {

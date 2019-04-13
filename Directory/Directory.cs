@@ -1,6 +1,6 @@
 ﻿using FS.Api;
-using FS.Contracts;
-using FS.Contracts.Indexes;
+using FS.BlockAccess;
+using FS.BlockAccess.Indexes;
 using FS.Utils;
 using System;
 using System.Collections.Generic;
@@ -223,38 +223,38 @@ namespace FS.Directory
 
         public IDirectoryEntryInfo[] GetDirectoryEntries()
         {
-            List<IDirectoryEntryInfo> result;
-
             this.indexLock.EnterReadLock();
             try
             {
-                var buffer = new DirectoryItem[this.itemsCount];
-                this.blockStream.Read(1, buffer);
-
-                var names = new short[this.lastNameOffset];
-                this.nameIndexBlockStream.Read(0, names);
-
-                result = new List<IDirectoryEntryInfo>(this.itemsCount);
-                foreach (var item in buffer.Where(x => (x.Entry.Flags & DirectoryFlags.Deleted) == 0))
+                List<IDirectoryEntryInfo> result = new List<IDirectoryEntryInfo>(this.itemsCount);
+                if (this.itemsCount > 0)
                 {
-                    var entry = item.Entry;
+                    var buffer = new DirectoryItem[this.itemsCount];
+                    this.blockStream.Read(1, buffer);
 
-                    var nameLength = names[entry.NameOffset];
-                    var nameBuffer = new char[nameLength];
-                    for (var i = 0; i < nameLength; i++)
+                    var names = new short[this.lastNameOffset];
+                    this.nameIndexBlockStream.Read(0, names);
+
+                    foreach (var item in buffer.Where(x => (x.Entry.Flags & DirectoryFlags.Deleted) == 0))
                     {
-                        nameBuffer[i] = (char)names[entry.NameOffset + 1 + i];
-                    }
+                        var entry = item.Entry;
 
-                    result.Add(new DirectoryEntryInfo(entry, new string(nameBuffer)));
+                        var nameLength = names[entry.NameOffset];
+                        var nameBuffer = new char[nameLength];
+                        for (var i = 0; i < nameLength; i++)
+                        {
+                            nameBuffer[i] = (char)names[entry.NameOffset + 1 + i];
+                        }
+
+                        result.Add(new DirectoryEntryInfo(entry, new string(nameBuffer)));
+                    }
                 }
+                return result.ToArray();
             }
             finally
             {
                 this.indexLock.ExitReadLock();
             }
-
-            return result.ToArray();
         }
 
         public void Flush()
@@ -362,7 +362,7 @@ namespace FS.Directory
 
             var emptyEntryIndex = default(int?);
             var maxCapacity = this.index.SizeInBlocks * this.index.BlockSize;
-            if (maxCapacity >= firstEmptyItemOffset)
+            if (maxCapacity > firstEmptyItemOffset)
             {
                 var buffer = new DirectoryItem[maxCapacity - firstEmptyItemOffset];
                 this.blockStream.Read(firstEmptyItemOffset, buffer);

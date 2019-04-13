@@ -1,5 +1,5 @@
-﻿using FS.Contracts;
-using FS.Contracts.Indexes;
+﻿using FS.BlockAccess;
+using FS.BlockAccess.Indexes;
 using FS.Utils;
 using System;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace FS.Allocattion
         private readonly IIndex<int> index;
         private readonly IBlockStream<int> blockChain;
         private readonly IBlockStorage storage;
-        private readonly SemaphoreSlim lockObject = new SemaphoreSlim(1, 1);
+        private readonly object lockObject = new object();
         private int releasedBlockCount;
 
         public AllocationManager(
@@ -42,7 +42,7 @@ namespace FS.Allocattion
 
             var allocatedFromIndexBlocks = new int[0];
 
-            this.lockObject.Wait();
+            Monitor.Enter(this.lockObject);
             try
             {
                 var allocatedFromIndexBlockCount = Math.Min(this.releasedBlockCount, blockCount);
@@ -66,7 +66,7 @@ namespace FS.Allocattion
             }
             finally
             {
-                this.lockObject.Release();
+                Monitor.Exit(this.lockObject);
             }
 
             EraseBlocks(allocatedFromIndexBlocks);
@@ -75,7 +75,7 @@ namespace FS.Allocattion
 
         public void Release(int[] blocks)
         {
-            this.lockObject.Wait();
+            Monitor.Enter(this.lockObject);
             try
             {
                 this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.releasedBlockCount + blocks.Length, this.blockChain.Provider.BlockSize));
@@ -84,26 +84,25 @@ namespace FS.Allocattion
             }
             finally
             {
-                this.lockObject.Release();
+                Monitor.Exit(this.lockObject);
             }
         }
 
         public void Flush()
         {
-            this.lockObject.Wait();
+            Monitor.Enter(this.lockObject);
             try
             {
                 this.index.Flush();
             }
             finally
             {
-                this.lockObject.Release();
+                Monitor.Exit(this.lockObject);
             }
         }
 
         public void Dispose()
         {
-            this.lockObject.Dispose();
         }
 
         private void EraseBlocks(int[] blocks)

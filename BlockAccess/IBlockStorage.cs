@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace FS.Contracts
+namespace FS.BlockAccess
 {
     internal interface IBlockStorage : IDisposable
     {

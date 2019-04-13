@@ -3,7 +3,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace FS.Contracts
+namespace FS.BlockAccess
 {
     internal class BlockStorage : IBlockStorage
     {

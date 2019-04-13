@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace FS.Contracts.Indexes
+namespace FS.BlockAccess.Indexes
 {
     internal class IndexBlockProvier : IIndexBlockProvier
     {

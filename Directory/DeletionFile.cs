@@ -1,5 +1,5 @@
-﻿using FS.Contracts;
-using FS.Contracts.Indexes;
+﻿using FS.BlockAccess;
+using FS.BlockAccess.Indexes;
 using System;
 
 namespace FS.Directory

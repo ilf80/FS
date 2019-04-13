@@ -1,4 +1,4 @@
-﻿using FS.Contracts;
+﻿using FS.BlockAccess;
 using System;
 
 namespace FS.Directory

@@ -1,6 +1,6 @@
 ﻿using FS.Allocattion;
-using FS.Contracts;
-using FS.Contracts.Indexes;
+using FS.BlockAccess;
+using FS.BlockAccess.Indexes;
 using FS.Directory;
 using System;
 using System.Collections.Generic;

@@ -2,7 +2,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace FS.Contracts.Indexes
+namespace FS.BlockAccess.Indexes
 {
     internal class Index<T> : IIndex<T> where T : struct
     {
