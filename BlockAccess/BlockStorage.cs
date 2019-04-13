@@ -26,10 +26,9 @@ namespace FS.BlockAccess
             this.fileStream = new FileStream(this.fileName,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
-                //FileShare.None,
                 FileShare.Read,
                 Constants.BlockSize,
-                FileOptions.Asynchronous | FileOptions.RandomAccess);
+                FileOptions.RandomAccess);
         }
 
         public void ReadBlock(int blockIndex, byte[] buffer)
