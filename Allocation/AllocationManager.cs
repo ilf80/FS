@@ -10,7 +10,7 @@ namespace FS.Allocattion
     internal sealed class AllocationManager : IAllocationManager
     {
         private readonly IIndex<int> index;
-        private readonly IBlockStream<int> blockChain;
+        private readonly IBlockStream<int> blockStream;
         private readonly IBlockStorage storage;
         private readonly object lockObject = new object();
         private int releasedBlockCount;
@@ -27,7 +27,7 @@ namespace FS.Allocattion
 
             this.index = indexFacory(this);
 
-            this.blockChain = new BlockStream<int>(this.index);
+            this.blockStream = new BlockStream<int>(this.index);
             this.storage = storage ?? throw new System.ArgumentNullException(nameof(storage));
             this.releasedBlockCount = freeSpaceBlocksCount;
         }
@@ -51,8 +51,8 @@ namespace FS.Allocattion
                     allocatedFromIndexBlocks = new int[allocatedFromIndexBlockCount];
                     var position = this.releasedBlockCount - allocatedFromIndexBlockCount;
 
-                    this.blockChain.Read(position, allocatedFromIndexBlocks);
-                    this.blockChain.Write(position, new int[allocatedFromIndexBlockCount]);
+                    this.blockStream.Read(position, allocatedFromIndexBlocks);
+                    this.blockStream.Write(position, new int[allocatedFromIndexBlockCount]);
 
                     this.releasedBlockCount -= allocatedFromIndexBlockCount;
                 }
@@ -78,8 +78,8 @@ namespace FS.Allocattion
             Monitor.Enter(this.lockObject);
             try
             {
-                this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.releasedBlockCount + blocks.Length, this.blockChain.Provider.BlockSize));
-                this.blockChain.Write(this.releasedBlockCount, blocks);
+                this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.releasedBlockCount + blocks.Length, this.blockStream.Provider.BlockSize));
+                this.blockStream.Write(this.releasedBlockCount, blocks);
                 this.releasedBlockCount += blocks.Length;
             }
             finally

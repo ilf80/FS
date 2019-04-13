@@ -29,7 +29,7 @@ namespace FS
 
             
         }
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             var shouldCreate = !System.IO.File.Exists("TestFile.dat");
             using (var fs = shouldCreate ? FileSystem.Create("TestFile.dat") : FileSystem.Open("TestFile.dat"))

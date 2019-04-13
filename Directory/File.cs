@@ -11,7 +11,7 @@ namespace FS.Directory
         private readonly IDirectoryCache directoryCache;
         private readonly int blockId;
         private readonly int directoryBlookId;
-        private readonly BlockStream<byte> blockChain;
+        private readonly BlockStream<byte> blockStream;
         private readonly Index<byte> index;
         private readonly ReaderWriterLockSlim lockObject = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
@@ -26,9 +26,9 @@ namespace FS.Directory
             this.directoryBlookId = directoryBlookId;
 
             var provider = new IndexBlockProvier(blockId, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            var indexBlockChain = new BlockStream<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            this.blockChain = new BlockStream<byte>(this.index);
+            var indexBlockStream = new BlockStream<int>(provider);
+            this.index = new Index<byte>(provider, indexBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
+            this.blockStream = new BlockStream<byte>(this.index);
             Size = size;
         }
 
@@ -55,10 +55,12 @@ namespace FS.Directory
 
         public void Read(int position, byte[] buffer)
         {
+            CheckPosition(position, buffer.Length);
+
             this.lockObject.EnterReadLock();
             try
             {
-                this.blockChain.Read(position, buffer);
+                this.blockStream.Read(position, buffer);
             }
             finally
             {
@@ -86,10 +88,12 @@ namespace FS.Directory
 
         public void Write(int position, byte[] buffer)
         {
+            CheckPosition(position, buffer.Length);
+
             this.lockObject.EnterWriteLock();
             try
             {
-                this.blockChain.Write(position, buffer);
+                this.blockStream.Write(position, buffer);
             }
             finally
             {
@@ -100,6 +104,7 @@ namespace FS.Directory
         public void Dispose()
         {
             Flush();
+            this.lockObject.Dispose();
         }
 
         private void UpdateDirectoryEntry()
@@ -120,6 +125,18 @@ namespace FS.Directory
             if (size < 0)
             {
                 throw new ArgumentException("File size size be negative");
+            }
+        }
+
+        private void CheckPosition(int position, int length)
+        {
+            if (position < 0)
+            {
+                throw new ArgumentException("position cannot me negative");
+            }
+            if (position + length > Size)
+            {
+                throw new ArgumentOutOfRangeException("Out of file bounds");
             }
         }
     }

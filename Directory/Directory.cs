@@ -18,8 +18,8 @@ namespace FS.Directory
         private readonly Index<short> nameIndex;
         private readonly BlockStream<short> nameIndexBlockStream;
         private readonly ReaderWriterLockSlim indexLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        private readonly int nameBlockIndex;
 
-        private int nameBlockIndex;
         private int firstEmptyItemOffset;
         private int itemsCount;
         private int lastNameOffset;
@@ -77,8 +77,8 @@ namespace FS.Directory
                     var blocks = this.directoryCache.AllocationManager.Allocate(2);
 
                     var directoryIndexProvider = new IndexBlockProvier(blocks[1], this.directoryCache.AllocationManager, this.directoryCache.Storage);
-                    var directoryIndexBlockChain = new BlockStream<int>(directoryIndexProvider);
-                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockChain, this.directoryCache.AllocationManager, this.directoryCache.Storage);
+                    var directoryIndexBlockStream = new BlockStream<int>(directoryIndexProvider);
+                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
                     directoryIndex.SetSizeInBlocks(1);
                     directoryIndex.Flush();
 

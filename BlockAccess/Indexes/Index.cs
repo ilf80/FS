@@ -9,18 +9,18 @@ namespace FS.BlockAccess.Indexes
         static readonly int StructSize = Marshal.SizeOf<T>();
 
         private readonly IIndexBlockProvier provider;
-        private readonly IBlockStream<int> indexBlockChain;
+        private readonly IBlockStream<int> indexBlockStream;
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
 
         public Index(
             IIndexBlockProvier provider,
-            IBlockStream<int> blockChain,
+            IBlockStream<int> blockStream,
             IAllocationManager allocationManager,
             IBlockStorage storage)
         {
             this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            this.indexBlockChain = blockChain ?? throw new ArgumentNullException(nameof(blockChain));
+            this.indexBlockStream = blockStream ?? throw new ArgumentNullException(nameof(blockStream));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
             this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
         }
@@ -62,17 +62,17 @@ namespace FS.BlockAccess.Indexes
 
                 var allocateBlockCount = count - currentBlockCount;
                 var blocks = this.allocationManager.Allocate(allocateBlockCount);
-                this.indexBlockChain.Write(currentBlockCount, blocks);
+                this.indexBlockStream.Write(currentBlockCount, blocks);
             }
             else
             {
                 var releaseBlockCount = currentBlockCount - count;
                 var blocks = new int[releaseBlockCount];
-                this.indexBlockChain.Read(currentBlockCount - releaseBlockCount, blocks);
+                this.indexBlockStream.Read(currentBlockCount - releaseBlockCount, blocks);
                 this.allocationManager.Release(blocks);
 
                 blocks = new int[releaseBlockCount];
-                this.indexBlockChain.Write(currentBlockCount - releaseBlockCount, blocks);
+                this.indexBlockStream.Write(currentBlockCount - releaseBlockCount, blocks);
 
                 this.provider.SetSizeInBlocks(count / this.provider.BlockSize + count % this.provider.BlockSize == 0 ? 0 : 1);
             }
@@ -82,7 +82,7 @@ namespace FS.BlockAccess.Indexes
         {
             var blockCount = (entryCount * EntrySize) / this.storage.BlockSize;
             var blocks = new int[blockCount];
-            this.indexBlockChain.Read(index, blocks);
+            this.indexBlockStream.Read(index, blocks);
             return blocks;
         }
 

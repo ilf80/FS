@@ -22,8 +22,8 @@ namespace FS.Directory
             this.directoryBlookId = directoryBlookId;
 
             var provider = new IndexBlockProvier(blockId, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            var indexBlockChain = new BlockStream<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.directoryCache.AllocationManager, this.directoryCache.Storage);
+            var indexBlockStream = new BlockStream<int>(provider);
+            this.index = new Index<byte>(provider, indexBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
         }
 
         public int Size => throw new InvalidOperationException("File is being deleted");

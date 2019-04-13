@@ -66,7 +66,7 @@ namespace FS.Tests.IntegrationTests
         [TestCase(10, 1024)]
         [TestCase(10, 512)]
         [TestCase(5, 2048)]
-        public void Generate200MFile(int mb, int buffSize)
+        public void GenerateBigFile(int mb, int buffSize)
         {
             TestContext.WriteLine($"Generating {mb}Mb file");
             var stopWatch = new Stopwatch();
