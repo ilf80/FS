@@ -101,10 +101,6 @@ namespace FS.Allocattion
             }
         }
 
-        public void Dispose()
-        {
-        }
-
         private void EraseBlocks(int[] blocks)
         {
             var zerroBuffer = new byte[this.storage.BlockSize];
@@ -116,7 +112,10 @@ namespace FS.Allocattion
 
         private void CheckSize(int blockCount)
         {
-
+            if (blockCount <= 0)
+            {
+                throw new ArgumentException("blockCount cannot be negative or equal to 0");
+            }
         }
     }
 }

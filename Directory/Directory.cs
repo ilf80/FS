@@ -52,6 +52,8 @@ namespace FS.Directory
 
         public IDirectory OpenDirectory(string name, OpenMode openMode)
         {
+            CheckName(name);
+
             this.indexLock.EnterUpgradeableReadLock();
             try
             {
@@ -108,6 +110,8 @@ namespace FS.Directory
 
         public IFile OpenFile(string name, OpenMode openMode)
         {
+            CheckName(name);
+
             this.indexLock.EnterUpgradeableReadLock();
             try
             {
@@ -152,6 +156,8 @@ namespace FS.Directory
 
         public void DeleteFile(string name)
         {
+            CheckName(name);
+
             this.indexLock.EnterUpgradeableReadLock();
             try
             {
@@ -188,6 +194,8 @@ namespace FS.Directory
 
         public void DeleteDirectory(string name)
         {
+            CheckName(name);
+
             this.indexLock.EnterUpgradeableReadLock();
             try
             {
@@ -429,6 +437,18 @@ namespace FS.Directory
 
             this.lastNameOffset += name.Length + 1;
             return result;
+        }
+
+        private void CheckName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new ArgumentException("File or directory name cannot be empty", nameof(name));
+            }
+            if (name.Length >= short.MaxValue)
+            {
+                throw new ArgumentException($"File or directory name is too long. Mex length is {short.MaxValue}", nameof(name));
+            }
         }
 
         internal static Directory ReadDirectoryUnsafe(int blockId, IDirectoryCache directoryManager)

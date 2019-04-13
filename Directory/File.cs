@@ -68,6 +68,8 @@ namespace FS.Directory
 
         public void SetSize(int size)
         {
+            CheckSize(size);
+
             this.lockObject.EnterWriteLock();
             try
             {
@@ -105,11 +107,19 @@ namespace FS.Directory
             var directory = this.directoryCache.ReadDirectory(this.directoryBlookId);
             try
             {
-                directory.UpdateEntry(this.blockId, new DirectoryEntryInfoOverrides(Size, DateTime.Now, null));
+                directory.UpdateEntry(this.blockId, new DirectoryEntryInfoOverrides(Size, DateTime.Now));
             }
             finally
             {
                 this.directoryCache.UnRegisterDirectory(directory.BlockId);
+            }
+        }
+
+        private void CheckSize(int size)
+        {
+            if (size < 0)
+            {
+                throw new ArgumentException("File size size be negative");
             }
         }
     }

@@ -1,11 +1,8 @@
 ﻿using FS.BlockAccess;
-using FS.BlockAccess;
-using System;
-using System.Threading.Tasks;
 
 namespace FS.Allocattion
 {
-    internal interface IAllocationManager : IFlushable, IDisposable
+    internal interface IAllocationManager : IFlushable
     {
         int ReleasedBlockCount { get; }
 
