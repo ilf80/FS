@@ -74,10 +74,7 @@ namespace FS.BlockAccess
                 targetIndex = array2Offset;
                 sourceIndex = array1Offset;
             }
-            for (var i = 0; i < count; i++, targetIndex++, sourceIndex++)
-            {
-                target[targetIndex] = source[sourceIndex];
-            }
+            Array.Copy(source, sourceIndex, target, targetIndex, count);
             return count;
         }
 

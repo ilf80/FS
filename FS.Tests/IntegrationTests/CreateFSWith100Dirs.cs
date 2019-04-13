@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace FS.Tests.IntegrationTests
 {
     [TestFixture]
-    public sealed class CreateFFWith100Dirs
+    public sealed class CreateFSWith100Dirs
     {
         private string filePath;
         private Stream stream;
