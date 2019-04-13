@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace FS.Directory
 {
-    internal class Directory: IDirectory
+    internal class Directory : IDirectory
     {
         private readonly IIndex<DirectoryItem> index;
         private readonly IDirectoryCache directoryCache;
@@ -169,7 +169,41 @@ namespace FS.Directory
             {
                 this.indexLock.ExitUpgradeableReadLock();
             }
+        }
 
+        public void DeleteDirectory(string name)
+        {
+            this.indexLock.EnterUpgradeableReadLock();
+            try
+            {
+                var entry = GetDirectoryEntries().Where(x => x.IsDirectory && x.Name == name).FirstOrDefault();
+                if (entry == null)
+                {
+                    throw new InvalidOperationException($"Directory with name '{name}' does not exist");
+                }
+
+                this.indexLock.EnterWriteLock();
+                try
+                {
+                    var deletionDirectory = new DeletionDirectory(this.directoryCache, entry.BlockId);
+                    var resultirectory = this.directoryCache.RegisterDirectory(deletionDirectory);
+
+                    if (deletionDirectory != resultirectory)
+                    {
+                        throw new InvalidOperationException($"Directory with name '{name}' is in use");
+                    }
+
+                    deletionDirectory.Delete();
+                }
+                finally
+                {
+                    this.indexLock.ExitWriteLock();
+                }
+            }
+            finally
+            {
+                this.indexLock.ExitUpgradeableReadLock();
+            }
         }
 
         public IDirectoryEntryInfo[] GetDirectoryEntries()
@@ -252,6 +286,15 @@ namespace FS.Directory
             }
 
             throw new Exception("Entry not found");
+        }
+
+        internal void UnsafeDeleteDirectory()
+        {
+            this.index.SetSizeInBlocks(0);
+            this.nameIndex.SetSizeInBlocks(0);
+            this.directoryCache.AllocationManager.Release(new[] { BlockId, this.nameIndex.BlockId });
+
+            UpdateParentDirectory(new DirectoryEntryInfoOverrides(flags: DirectoryFlags.Directory | DirectoryFlags.Deleted));
         }
 
         private void ApplyOverrides(ref DirectoryEntryStruct entry, IDirectoryEntryInfoOverrides overrides)
@@ -346,10 +389,15 @@ namespace FS.Directory
                 return;
             }
 
+            UpdateParentDirectory(new DirectoryEntryInfoOverrides(updated: DateTime.Now));
+        }
+
+        private void UpdateParentDirectory(IDirectoryEntryInfoOverrides overrides)
+        {
             var directory = this.directoryCache.ReadDirectory(this.parentDirectoryBlockId);
             try
             {
-                directory.UpdateEntry(this.index.BlockId, new DirectoryEntryInfoOverrides(null, DateTime.Now, null));
+                directory.UpdateEntry(this.index.BlockId, overrides);
             }
             finally
             {
@@ -368,7 +416,7 @@ namespace FS.Directory
             return result;
         }
 
-        internal static IDirectory ReadDirectoryUnsafe(int blockId, IDirectoryCache directoryManager)
+        internal static Directory ReadDirectoryUnsafe(int blockId, IDirectoryCache directoryManager)
         {
             var indexBlockProvider = new IndexBlockProvier(blockId, directoryManager.AllocationManager, directoryManager.Storage);
             var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), directoryManager.AllocationManager, directoryManager.Storage);

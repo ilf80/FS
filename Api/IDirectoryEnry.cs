@@ -14,6 +14,8 @@ namespace FS.Api
 
         IDirectoryEntry OpenDirectory(string name, OpenMode mode);
 
+        void DeleteDirectory(string name);
+
         void Flush();
     }
 }

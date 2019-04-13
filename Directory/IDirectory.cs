@@ -12,6 +12,8 @@ namespace FS.Directory
 
         void DeleteFile(string name);
 
+        void DeleteDirectory(string name);
+
         IDirectoryEntryInfo[] GetDirectoryEntries();
 
         void UpdateEntry(int blockId, IDirectoryEntryInfoOverrides entry);

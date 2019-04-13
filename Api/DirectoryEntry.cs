@@ -69,5 +69,10 @@ namespace FS.Api
         {
             this.directory.DeleteFile(name);            
         }
+
+        public void DeleteDirectory(string name)
+        {
+            this.directory.DeleteDirectory(name);
+        }
     }
 }
