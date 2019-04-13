@@ -8,22 +8,22 @@ namespace FS.Directory
     {
         private readonly int blockId;
         private readonly int directoryBlookId;
-        private IDirectoryCache directoryManager;
+        private IDirectoryCache directoryCache;
         private Index<byte> index;
 
         public DeletionFile(
-           IDirectoryCache directoryManager,
+           IDirectoryCache directoryCache,
            int blockId,
            int directoryBlookId,
            int size)
         {
-            this.directoryManager = directoryManager ?? throw new ArgumentNullException(nameof(directoryManager));
+            this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             this.blockId = blockId;
             this.directoryBlookId = directoryBlookId;
 
-            var provider = new IndexBlockProvier(blockId, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            var provider = new IndexBlockProvier(blockId, this.directoryCache.AllocationManager, this.directoryCache.Storage);
             var indexBlockChain = new BlockStream<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            this.index = new Index<byte>(provider, indexBlockChain, this.directoryCache.AllocationManager, this.directoryCache.Storage);
         }
 
         public int Size => throw new InvalidOperationException("File is being deleted");
@@ -32,7 +32,7 @@ namespace FS.Directory
 
         public void Dispose()
         {
-            this.directoryManager = null;
+            this.directoryCache = null;
             this.index = null;
         }
 
@@ -58,19 +58,19 @@ namespace FS.Directory
 
         public void Delete()
         {
-            var directory = this.directoryManager.ReadDirectory(this.directoryBlookId);
+            var directory = this.directoryCache.ReadDirectory(this.directoryBlookId);
             try
             {
                 directory.UpdateEntry(this.blockId, new DirectoryEntryInfoOverrides(flags: DirectoryFlags.File | DirectoryFlags.Deleted));
             }
             finally
             {
-                this.directoryManager.UnRegisterDirectory(directory.BlockId);
+                this.directoryCache.UnRegisterDirectory(directory.BlockId);
             }
 
             this.index.SetSizeInBlocks(0);
-            this.directoryManager.AllocationManager.Release(new[] { BlockId });
-            this.directoryManager.UnRegisterFile(BlockId);
+            this.directoryCache.AllocationManager.Release(new[] { BlockId });
+            this.directoryCache.UnRegisterFile(BlockId);
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using FS.Allocattion;
-using FS.Api;
+﻿using FS.Api;
 using FS.Contracts;
 using FS.Contracts.Indexes;
 using FS.Utils;
@@ -17,7 +16,7 @@ namespace FS.Directory
         private readonly int parentDirectoryBlockId;
         private readonly BlockStream<DirectoryItem> blockStream;
         private readonly Index<short> nameIndex;
-        private readonly BlockStream<short> nameIndexBlockChain;
+        private readonly BlockStream<short> nameIndexBlockStream;
         private readonly ReaderWriterLockSlim indexLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
         private int nameBlockIndex;
@@ -38,7 +37,7 @@ namespace FS.Directory
             var nameIndexProvider = new IndexBlockProvier(this.nameBlockIndex, this.directoryCache.AllocationManager, this.directoryCache.Storage);
             var nameIndexProbiderBlockStream = new BlockStream<int>(nameIndexProvider);
             this.nameIndex = new Index<short>(nameIndexProvider, nameIndexProbiderBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            this.nameIndexBlockChain = new BlockStream<short>(this.nameIndex);
+            this.nameIndexBlockStream = new BlockStream<short>(this.nameIndex);
 
             this.firstEmptyItemOffset = header.FirstEmptyItemOffset;
             this.itemsCount = header.ItemsCount;
@@ -233,7 +232,7 @@ namespace FS.Directory
                 this.blockStream.Read(1, buffer);
 
                 var names = new short[this.lastNameOffset];
-                this.nameIndexBlockChain.Read(0, names);
+                this.nameIndexBlockStream.Read(0, names);
 
                 result = new List<IDirectoryEntryInfo>(this.itemsCount);
                 foreach (var item in buffer.Where(x => (x.Entry.Flags & DirectoryFlags.Deleted) == 0))
@@ -425,7 +424,7 @@ namespace FS.Directory
         {
             var result = this.lastNameOffset;
             this.nameIndex.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.lastNameOffset + name.Length + 1, this.nameIndex.BlockSize));
-            this.nameIndexBlockChain.Write(this.lastNameOffset, new[] { (short)name.Length }.Concat(name.Select(x => (short)x)).ToArray());
+            this.nameIndexBlockStream.Write(this.lastNameOffset, new[] { (short)name.Length }.Concat(name.Select(x => (short)x)).ToArray());
             this.nameIndex.Flush();
 
             this.lastNameOffset += name.Length + 1;

@@ -8,7 +8,7 @@ namespace FS.Directory
 {
     internal sealed class File : IFile
     {
-        private readonly IDirectoryCache directoryManager;
+        private readonly IDirectoryCache directoryCache;
         private readonly int blockId;
         private readonly int directoryBlookId;
         private readonly BlockStream<byte> blockChain;
@@ -16,18 +16,18 @@ namespace FS.Directory
         private readonly ReaderWriterLockSlim lockObject = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
         public File(
-            IDirectoryCache directoryManager,
+            IDirectoryCache directoryCache,
             int blockId,
             int directoryBlookId,
             int size)
         {
-            this.directoryManager = directoryManager ?? throw new ArgumentNullException(nameof(directoryManager));
+            this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             this.blockId = blockId;
             this.directoryBlookId = directoryBlookId;
 
-            var provider = new IndexBlockProvier(blockId, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            var provider = new IndexBlockProvier(blockId, this.directoryCache.AllocationManager, this.directoryCache.Storage);
             var indexBlockChain = new BlockStream<int>(provider);
-            this.index = new Index<byte>(provider, indexBlockChain, this.directoryManager.AllocationManager, this.directoryManager.Storage);
+            this.index = new Index<byte>(provider, indexBlockChain, this.directoryCache.AllocationManager, this.directoryCache.Storage);
             this.blockChain = new BlockStream<byte>(this.index);
             Size = size;
         }
@@ -102,14 +102,14 @@ namespace FS.Directory
 
         private void UpdateDirectoryEntry()
         {
-            var directory = this.directoryManager.ReadDirectory(this.directoryBlookId);
+            var directory = this.directoryCache.ReadDirectory(this.directoryBlookId);
             try
             {
                 directory.UpdateEntry(this.blockId, new DirectoryEntryInfoOverrides(Size, DateTime.Now, null));
             }
             finally
             {
-                this.directoryManager.UnRegisterDirectory(directory.BlockId);
+                this.directoryCache.UnRegisterDirectory(directory.BlockId);
             }
         }
     }
