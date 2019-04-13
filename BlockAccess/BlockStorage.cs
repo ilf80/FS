@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace FS.BlockAccess
 {
-    internal class BlockStorage : IBlockStorage
+    internal sealed class BlockStorage : IBlockStorage
     {
         private readonly string fileName;
         private readonly SemaphoreSlim lockObject = new SemaphoreSlim(1, 1);

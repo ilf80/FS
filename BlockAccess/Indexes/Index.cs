@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace FS.BlockAccess.Indexes
 {
-    internal class Index<T> : IIndex<T> where T : struct
+    internal sealed class Index<T> : IIndex<T> where T : struct
     {
         static readonly int StructSize = Marshal.SizeOf<T>();
 

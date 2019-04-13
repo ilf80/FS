@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace FS.BlockAccess.Indexes
 {
-    internal class IndexBlockProvier : IIndexBlockProvier
+    internal sealed class IndexBlockProvier : IIndexBlockProvier
     {
         private readonly LinkedList<int[]> indexList = new LinkedList<int[]>();
         private readonly int rootBlockIndex;

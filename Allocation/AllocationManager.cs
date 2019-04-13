@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace FS.Allocattion
 {
-    internal class AllocationManager : IAllocationManager
+    internal sealed class AllocationManager : IAllocationManager
     {
         private readonly IIndex<int> index;
         private readonly IBlockStream<int> blockChain;

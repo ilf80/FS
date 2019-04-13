@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace FS.Directory
 {
-    internal class Directory : IDirectory
+    internal sealed class Directory : IDirectory
     {
         private readonly IIndex<DirectoryItem> index;
         private readonly IDirectoryCache directoryCache;
