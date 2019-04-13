@@ -116,6 +116,8 @@ namespace FS.Api
                     WriteHeader();
                     this.rootDirectory.Flush();
                     this.allocationManager.Flush();
+
+                    this.allocationManager.Dispose();
                     this.storage.Dispose();
                     this.cacheLock.Dispose();
                 }

@@ -12,6 +12,7 @@ namespace FS.Allocattion
         private readonly IIndex<int> index;
         private readonly IBlockStream<int> blockChain;
         private readonly IBlockStorage storage;
+        private readonly SemaphoreSlim lockObject = new SemaphoreSlim(1, 1);
         private int releasedBlockCount;
 
         public AllocationManager(
@@ -40,42 +41,72 @@ namespace FS.Allocattion
             CheckSize(blockCount);
 
             var allocatedFromIndexBlocks = new int[0];
-            var allocatedFromIndexBlockCount = Math.Min(this.releasedBlockCount, blockCount);
-            if (allocatedFromIndexBlockCount > 0)
+
+            this.lockObject.Wait();
+            try
             {
-                allocatedFromIndexBlocks = new int[allocatedFromIndexBlockCount];
-                var position = this.releasedBlockCount - allocatedFromIndexBlockCount;
+                var allocatedFromIndexBlockCount = Math.Min(this.releasedBlockCount, blockCount);
+                if (allocatedFromIndexBlockCount > 0)
+                {
+                    allocatedFromIndexBlocks = new int[allocatedFromIndexBlockCount];
+                    var position = this.releasedBlockCount - allocatedFromIndexBlockCount;
 
-                this.blockChain.Read(position, allocatedFromIndexBlocks);
-                this.blockChain.Write(position, new int[allocatedFromIndexBlockCount]);
+                    this.blockChain.Read(position, allocatedFromIndexBlocks);
+                    this.blockChain.Write(position, new int[allocatedFromIndexBlockCount]);
 
-                this.releasedBlockCount -= allocatedFromIndexBlockCount;
+                    this.releasedBlockCount -= allocatedFromIndexBlockCount;
+                }
 
-                ClearBlocks(allocatedFromIndexBlocks);
+                var leftBlocks = blockCount - allocatedFromIndexBlockCount;
+                if (leftBlocks > 0)
+                {
+                    var blocks = this.storage.Extend(leftBlocks);
+                    return allocatedFromIndexBlocks.Concat(blocks).ToArray();
+                }
+            }
+            finally
+            {
+                this.lockObject.Release();
             }
 
-            var leftBlocks = blockCount - allocatedFromIndexBlockCount;
-            if (leftBlocks > 0)
-            {
-                var blocks = this.storage.Extend(leftBlocks);
-                return allocatedFromIndexBlocks.Concat(blocks).ToArray();
-            }
+            EraseBlocks(allocatedFromIndexBlocks);
             return allocatedFromIndexBlocks;
         }
 
         public void Release(int[] blocks)
         {
-            this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.releasedBlockCount + blocks.Length, this.blockChain.Provider.BlockSize));
-            this.blockChain.Write(this.releasedBlockCount, blocks);
-            this.releasedBlockCount += blocks.Length;
+            this.lockObject.Wait();
+            try
+            {
+                this.index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(this.releasedBlockCount + blocks.Length, this.blockChain.Provider.BlockSize));
+                this.blockChain.Write(this.releasedBlockCount, blocks);
+                this.releasedBlockCount += blocks.Length;
+            }
+            finally
+            {
+                this.lockObject.Release();
+            }
         }
 
         public void Flush()
         {
-            this.index.Flush();
+            this.lockObject.Wait();
+            try
+            {
+                this.index.Flush();
+            }
+            finally
+            {
+                this.lockObject.Release();
+            }
         }
 
-        private void ClearBlocks(int[] blocks)
+        public void Dispose()
+        {
+            this.lockObject.Dispose();
+        }
+
+        private void EraseBlocks(int[] blocks)
         {
             var zerroBuffer = new byte[this.storage.BlockSize];
             foreach (var blockId in blocks)

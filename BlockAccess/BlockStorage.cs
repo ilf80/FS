@@ -1,12 +1,14 @@
 ﻿using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace FS.Contracts
 {
     internal class BlockStorage : IBlockStorage
     {
         private readonly string fileName;
+        private readonly SemaphoreSlim lockObject = new SemaphoreSlim(1, 1);
         private FileStream fileStream;
 
         public long TotalSize => this.fileStream.Length;
@@ -32,8 +34,16 @@ namespace FS.Contracts
 
         public void ReadBlock(int blockIndex, byte[] buffer)
         {
-            this.fileStream.Position = blockIndex * Constants.BlockSize;
-            this.fileStream.Read(buffer, 0, Constants.BlockSize);
+            this.lockObject.Wait();
+            try
+            {
+                this.fileStream.Position = blockIndex * Constants.BlockSize;
+                this.fileStream.Read(buffer, 0, Constants.BlockSize);
+            }
+            finally
+            {
+                this.lockObject.Release();
+            }
         }
 
         public void ReadBlock<T>(int blockIndex, T[] buffer) where T : struct
@@ -42,8 +52,16 @@ namespace FS.Contracts
             GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
             try
             {
-                this.fileStream.Position = blockIndex * Constants.BlockSize;
-                this.fileStream.Read(tempBuffer, 0, Constants.BlockSize);
+                this.lockObject.Wait();
+                try
+                {
+                    this.fileStream.Position = blockIndex * Constants.BlockSize;
+                    this.fileStream.Read(tempBuffer, 0, Constants.BlockSize);
+                }
+                finally
+                {
+                    this.lockObject.Release();
+                }
 
                 Marshal.Copy(tempBuffer, 0, handle.AddrOfPinnedObject(), tempBuffer.Length);
             }
@@ -55,8 +73,16 @@ namespace FS.Contracts
 
         public void WriteBlock(int blockIndex, byte[] buffer)
         {
-            this.fileStream.Position = blockIndex * Constants.BlockSize;
-            this.fileStream.Write(buffer, 0, Constants.BlockSize);
+            this.lockObject.Wait();
+            try
+            {
+                this.fileStream.Position = blockIndex * Constants.BlockSize;
+                this.fileStream.Write(buffer, 0, Constants.BlockSize);
+            }
+            finally
+            {
+                this.lockObject.Release();
+            }
         }
 
         public void WriteBlock<T>(int blockIndex, T[] buffer) where T : struct
@@ -73,20 +99,38 @@ namespace FS.Contracts
                 handle.Free();
             }
 
-            this.fileStream.Position = blockIndex * Constants.BlockSize;
-            this.fileStream.Write(tempBuffer, 0, Constants.BlockSize);
+            this.lockObject.Wait();
+            try
+            {
+                this.fileStream.Position = blockIndex * Constants.BlockSize;
+                this.fileStream.Write(tempBuffer, 0, Constants.BlockSize);
+            }
+            finally
+            {
+                this.lockObject.Release();
+            }
         }
 
         public int[] Extend(int blockCount)
         {
-            var result = Enumerable.Range((int)(this.fileStream.Length / BlockSize) + 1, blockCount).ToArray();
-            this.fileStream.SetLength(this.fileStream.Length + blockCount * BlockSize);
-            return result;
+            this.lockObject.Wait();
+            try
+            {
+                var length = (int)this.fileStream.Length;
+                var result = Enumerable.Range(length / BlockSize + 1, blockCount).ToArray();
+                this.fileStream.SetLength(length + blockCount * BlockSize);
+                return result;
+            }
+            finally
+            {
+                this.lockObject.Release();
+            }
         }
 
         public void Dispose()
         {
             this.fileStream.Dispose();
+            this.lockObject.Dispose();
         }
     }
 }
