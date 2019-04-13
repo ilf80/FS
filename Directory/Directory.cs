@@ -59,7 +59,15 @@ namespace FS.Directory
                 var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
                 if (entry != null)
                 {
+                    if (openMode == OpenMode.Create)
+                    {
+                        throw new InvalidOperationException($"Directory with '{name}' already exists");
+                    }
                     return this.directoryCache.ReadDirectory(entry.BlockId);
+                }
+                if (openMode == OpenMode.OpenExisting)
+                {
+                    throw new InvalidOperationException($"Directory with '{name}' does not exist");
                 }
 
                 this.indexLock.EnterWriteLock();
@@ -107,9 +115,17 @@ namespace FS.Directory
                 var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
                 if (entry != null)
                 {
+                    if (openMode == OpenMode.Create)
+                    {
+                        throw new InvalidOperationException($"File with '{name}' already exists");
+                    }
                     return this.directoryCache.ReadFile(
                         entry.BlockId,
                         () => new File(this.directoryCache, entry.BlockId, BlockId, entry.Size));
+                }
+                if (openMode == OpenMode.OpenExisting)
+                {
+                    throw new InvalidOperationException($"Directory with '{name}' does not exist");
                 }
 
                 this.indexLock.EnterWriteLock();

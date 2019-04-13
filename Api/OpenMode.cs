@@ -3,6 +3,7 @@
     public enum OpenMode
     {
         OpenExisting,
-        OpenOrCreate
+        OpenOrCreate,
+        Create
     }
 }
