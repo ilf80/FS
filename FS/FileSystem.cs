@@ -1,18 +1,26 @@
-﻿using System;
+﻿
+using System;
 using FS.Api;
+using FS.Api.Container;
+using FS.Core.Api.Directory;
 using FS.Core.Api.FileSystem;
 
 namespace FS
 {
     internal sealed class FileSystem : IFileSystem
     {
+        private readonly IFactory<IDirectoryEntry, IDirectoryCache, IDirectory, bool> directoryFactory;
         private IFileSystemProvider provider;
         private bool isDisposed;
         private bool isOpened;
 
-        public FileSystem(IFileSystemProvider provider)
+        public FileSystem(
+            IFactory<IFileSystemProvider> providerFactory,
+            IFactory<IDirectoryEntry, IDirectoryCache, IDirectory, bool> directoryFactory)
         {
-            this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            if (providerFactory == null) throw new ArgumentNullException(nameof(providerFactory));
+            provider = providerFactory.Create();
+            this.directoryFactory = directoryFactory ?? throw new ArgumentNullException(nameof(directoryFactory));
         }
 
         public void Open(string fileName, OpenMode openMode)
@@ -29,7 +37,7 @@ namespace FS
             if (!isOpened) throw new InvalidOperationException($"{nameof(FileSystem)} is not initialized");
             if (isDisposed) throw new ObjectDisposedException(nameof(FileSystem));
 
-            return new DirectoryEntry(provider.DirectoryCache, provider.RootDirectory, false);
+            return directoryFactory.Create(provider.DirectoryCache, provider.RootDirectory, false);
         }
 
         public void Dispose()

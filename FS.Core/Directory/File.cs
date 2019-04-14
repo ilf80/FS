@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Threading;
+using FS.Api.Container;
+using FS.Core.Api.BlockAccess;
+using FS.Core.Api.BlockAccess.Indexes;
+using FS.Core.Api.Common;
 using FS.Core.Api.Directory;
-using FS.Core.BlockAccess;
-using FS.Core.BlockAccess.Indexes;
 using FS.Core.Utils;
 
 namespace FS.Core.Directory
@@ -12,29 +14,29 @@ namespace FS.Core.Directory
         private readonly IDirectoryCache directoryCache;
         private readonly int blockId;
         private readonly int directoryBlockId;
-        private readonly BlockStream<byte> blockStream;
-        private readonly Index<byte> index;
+        private readonly IBlockStream<byte> blockStream;
+        private readonly IIndex<byte> index;
         private readonly ReaderWriterLockSlim lockObject = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
         public File(
             IDirectoryCache directoryCache,
-            int blockId,
-            int directoryBlockId,
-            int size)
+            IFileParameters fileParameters,
+            IFactory<IIndexBlockProvider, int, ICommonAccessParameters> indexBlockProviderFactory,
+            IFactory<IIndex<byte>, IIndexBlockProvider, ICommonAccessParameters> indexFactory,
+            IFactory<IBlockStream<byte>, IBlockProvider<byte>> blockStreamFactory)
         {
-            if (blockId < 0) throw new ArgumentOutOfRangeException(nameof(blockId));
-            if (directoryBlockId < 0) throw new ArgumentOutOfRangeException(nameof(directoryBlockId));
-            if (size < 0) throw new ArgumentOutOfRangeException(nameof(size));
-
+            if (fileParameters == null) throw new ArgumentNullException(nameof(fileParameters));
+            if (indexBlockProviderFactory == null) throw new ArgumentNullException(nameof(indexBlockProviderFactory));
+            if (blockStreamFactory == null) throw new ArgumentNullException(nameof(blockStreamFactory));
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
-            this.blockId = blockId;
-            this.directoryBlockId = directoryBlockId;
 
-            var provider = new IndexBlockProvider(blockId, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            var indexBlockStream = new BlockStream<int>(provider);
-            index = new Index<byte>(provider, indexBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            blockStream = new BlockStream<byte>(index);
-            Size = size;
+            blockId = fileParameters.BlockId;
+            directoryBlockId = fileParameters.ParentDirectoryBlockId;
+            Size = fileParameters.Size;
+
+            var provider = indexBlockProviderFactory.Create(blockId, this.directoryCache);
+            index = indexFactory.Create(provider, directoryCache);
+            blockStream = blockStreamFactory.Create(index);
         }
 
         public int BlockId => index.BlockId;

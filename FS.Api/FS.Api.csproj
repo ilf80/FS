@@ -4,4 +4,13 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Reference Include="Unity.Abstractions">
+      <HintPath>..\..\..\..\.nuget\packages\unity\5.10.3\lib\netstandard2.0\Unity.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Container">
+      <HintPath>..\..\..\..\.nuget\packages\unity\5.10.3\lib\netstandard2.0\Unity.Container.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

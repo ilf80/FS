@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using FS.Api;
+using FS.Api.Container;
 using FS.Core.Api.Directory;
 
 namespace FS
@@ -13,15 +14,21 @@ namespace FS
         private IDirectory directory;
         private bool isDisposed;
         private readonly bool unRegisterDirectoryOnDispose;
+        private readonly IFactory<IDirectoryEntry, IDirectoryCache, IDirectory, bool> directoryFactory;
+        private readonly IFactory<IFileEntry, IDirectoryCache, IFile> fileFactory;
 
-        internal DirectoryEntry(
+        public DirectoryEntry(
             IDirectoryCache directoryCache,
             IDirectory directory,
-            bool unRegisterDirectoryOnDispose = true)
+            bool unRegisterDirectoryOnDispose,
+            IFactory<IDirectoryEntry, IDirectoryCache, IDirectory, bool> directoryFactory,
+            IFactory<IFileEntry, IDirectoryCache, IFile> fileFactory)
         {
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             this.directory = directory ?? throw new ArgumentNullException(nameof(directory));
             this.unRegisterDirectoryOnDispose = unRegisterDirectoryOnDispose;
+            this.directoryFactory = directoryFactory ?? throw new ArgumentNullException(nameof(directoryFactory));
+            this.fileFactory = fileFactory ?? throw new ArgumentNullException(nameof(fileFactory));
         }
 
         public void Dispose()
@@ -74,7 +81,7 @@ namespace FS
                 throw new InvalidEnumArgumentException(nameof(mode), (int) mode, typeof(OpenMode));
 
             var tempDirectory = directory.OpenDirectory(name, mode);
-            return new DirectoryEntry(directoryCache, tempDirectory);
+            return directoryFactory.Create(directoryCache, tempDirectory, true);
         }
 
         public IFileEntry OpenFile(string name, OpenMode mode)
@@ -86,7 +93,7 @@ namespace FS
                 throw new InvalidEnumArgumentException(nameof(mode), (int) mode, typeof(OpenMode));
 
             var file = directory.OpenFile(name, mode);
-            return new FileEntry(directoryCache, file);
+            return fileFactory.Create(directoryCache, file);
         }
 
         public void DeleteFile(string name)

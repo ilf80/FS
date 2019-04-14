@@ -1,18 +1,25 @@
 ﻿using System;
 using FS.Api;
+using FS.Api.Container;
 using FS.Core.Api.Directory;
 
 namespace FS.Core.Directory
 {
-    internal sealed class DeletionDirectory : IDirectory
+    internal sealed class DeletionDirectory : IDeletionDirectory
     {
         private IDirectoryCache directoryCache;
+        private readonly IUnsafeDirectoryReader unsafeDirectoryReader;
 
-        public DeletionDirectory(IDirectoryCache directoryCache, int blockId)
+        public DeletionDirectory(
+            IDirectoryCache directoryCache, 
+            int blockId,
+            IFactory<IUnsafeDirectoryReader, IDirectoryCache> unsafeDirectoryReaderFactory)
         {
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             if (blockId < 0) throw new ArgumentOutOfRangeException(nameof(blockId));
             BlockId = blockId;
+
+            unsafeDirectoryReader = unsafeDirectoryReaderFactory.Create(directoryCache);
         }
 
         public int BlockId { get; }
@@ -59,7 +66,7 @@ namespace FS.Core.Directory
 
         public void Delete()
         {
-            using (var directory = Directory.ReadDirectoryUnsafe(BlockId, directoryCache))
+            using (var directory = unsafeDirectoryReader.Read(BlockId))
             {
                 if (directory.GetDirectoryEntries().Length > 0)
                 {

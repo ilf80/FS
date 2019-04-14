@@ -1,13 +1,14 @@
-﻿using FS.Api;
-using NUnit.Framework;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using FS.Api;
+using FS.Api.Container;
+using FS.Container;
+using FS.Core.Container;
+using NUnit.Framework;
+using Unity;
 
 namespace FS.Tests.IntegrationTests
 {
@@ -16,23 +17,30 @@ namespace FS.Tests.IntegrationTests
     {
         private string filePath;
         private Stream stream;
+        private IUnityContainer container;
 
         [SetUp]
         public void SetUp()
         {
-            this.filePath = Path.Combine(Path.GetTempPath(), "TestFile.dat");
+            container = new UnityContainer()
+                .AddExtension(new CoreRegistration())
+                .AddExtension(new FactoryExtension())
+                .AddExtension(new FSExtentions())
+                .AddExtension(new Diagnostic());
+
+            filePath = Path.Combine(Path.GetTempPath(), "TestFile.dat");
 
             var assembly = Assembly.GetExecutingAssembly();
-            this.stream = assembly.GetManifestResourceStream("FS.Tests.Program.cs");
+            stream = assembly.GetManifestResourceStream("FS.Tests.Program.cs");
         }
 
         [TearDown]
         public void TearDown()
         {
-            this.stream.Close();
-            if (System.IO.File.Exists(this.filePath))
+            stream.Close();
+            if (File.Exists(filePath))
             {
-                System.IO.File.Delete(this.filePath);
+                File.Delete(filePath);
             }
         }
 
@@ -40,8 +48,9 @@ namespace FS.Tests.IntegrationTests
         public void GenerateDirectories()
         {
             var nameList = new List<string>();
-            using (var fs = FileSystem.Create(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.Create);
                 var root = fs.GetRootDirectory();
 
 
@@ -53,8 +62,9 @@ namespace FS.Tests.IntegrationTests
                 }
             }
 
-            using (var fs = FileSystem.Open(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.OpenExisting);
                 var root = fs.GetRootDirectory();
 
                 CollectionAssert.AreEqual(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
@@ -70,16 +80,17 @@ namespace FS.Tests.IntegrationTests
         {
             TestContext.WriteLine($"Generating {mb}Mb file");
             var stopWatch = new Stopwatch();
-            using (var fs = FileSystem.Create(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.Create);
                 var root = fs.GetRootDirectory();
 
                 var buffer = new byte[buffSize];
-                for(var i = 0; i<buffer.Length; i++)
+                for (var i = 0; i < buffer.Length; i++)
                 {
                     buffer[i] = (byte)i;
                 }
-                using(var file = root.OpenFile("Test File", OpenMode.Create))
+                using (var file = root.OpenFile("Test File", OpenMode.Create))
                 {
                     stopWatch.Start();
                     file.SetSize(mb * 1024 * 1024);
@@ -94,8 +105,9 @@ namespace FS.Tests.IntegrationTests
                 stopWatch.Stop();
             }
 
-            using (var fs = FileSystem.Open(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.OpenExisting);
                 var root = fs.GetRootDirectory();
 
                 var buffer = new byte[buffSize];

@@ -1,19 +1,23 @@
 ﻿using System;
 using FS.Api;
-using FS.Core.Allocation;
+using FS.Api.Container;
 using FS.Core.Api.Allocation;
 using FS.Core.Api.BlockAccess;
 using FS.Core.Api.BlockAccess.Indexes;
+using FS.Core.Api.Common;
 using FS.Core.Api.Directory;
 using FS.Core.Api.FileSystem;
-using FS.Core.BlockAccess;
-using FS.Core.BlockAccess.Indexes;
 using FS.Core.Directory;
 
 namespace FS.Core.FileSystem
 {
     internal sealed class FileSystemProvider : IFileSystemProvider
     {
+        private readonly IFactory<IBlockStorage, string> blockStorageFactory;
+        private readonly IFactory<IIndexBlockProvider, int, ICommonAccessParameters> indexBlockProviderFactory;
+        private readonly IFactory<IIndex<int>, IIndexBlockProvider, ICommonAccessParameters> indexFactory;
+        private readonly IFactory<IAllocationManager, IFactory<IIndex<int>, IAllocationManager>, IBlockStorage, int> allocationManagerFactory;
+        private readonly IFactory<IDirectoryCache, ICommonAccessParameters> directoryCacheFactory;
         private const int AllocationBlockId = 1;
         private const int RootDirectoryBlockId = 2;
         private const int RootDirectoryDataBlockId = 3;
@@ -21,11 +25,21 @@ namespace FS.Core.FileSystem
 
         private bool isOpened;
         private bool isDisposed;
-        private AllocationManager allocationManager;
+        private IAllocationManager allocationManager;
         private IBlockStorage storage;
 
-        public FileSystemProvider()
-        {   
+        public FileSystemProvider(
+            IFactory<IBlockStorage, string> blockStorageFactory,
+            IFactory<IIndexBlockProvider, int, ICommonAccessParameters> indexBlockProviderFactory,
+            IFactory<IIndex<int>, IIndexBlockProvider, ICommonAccessParameters> indexFactory,
+            IFactory<IAllocationManager, IFactory<IIndex<int>, IAllocationManager>, IBlockStorage, int> allocationManagerFactory,
+            IFactory<IDirectoryCache, ICommonAccessParameters> directoryCacheFactory)
+        {
+            this.blockStorageFactory = blockStorageFactory ?? throw new ArgumentNullException(nameof(blockStorageFactory));
+            this.indexBlockProviderFactory = indexBlockProviderFactory ?? throw new ArgumentNullException(nameof(indexBlockProviderFactory));
+            this.indexFactory = indexFactory ?? throw new ArgumentNullException(nameof(indexFactory));
+            this.allocationManagerFactory = allocationManagerFactory ?? throw new ArgumentNullException(nameof(allocationManagerFactory));
+            this.directoryCacheFactory = directoryCacheFactory ?? throw new ArgumentNullException(nameof(directoryCacheFactory));
         }
 
         public void Dispose()
@@ -54,7 +68,7 @@ namespace FS.Core.FileSystem
             if (fileName == null) throw new ArgumentNullException(nameof(fileName));
             if (isOpened) throw new InvalidOperationException("File system is already opened");
 
-            storage = new BlockStorage(fileName);
+            storage = blockStorageFactory.Create(fileName);
             storage.Open(openMode);
 
             try
@@ -92,19 +106,22 @@ namespace FS.Core.FileSystem
 
         private void InitializeFromHeader(IBlockStorage storage, FSHeader header)
         {
-            IIndex<int> AllocationIndexFactory(IAllocationManager m)
-            {
-                var allocationIndexProvider = new IndexBlockProvider(header.AllocationBlock, m, storage);
-                return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, storage);
-            }
+            var allocationIndexFactory = new GenericFactory<IIndex<int>, IAllocationManager>(
+                m =>
+                {
+                    var accessParameters = new CommonAccessParameters(storage, m);
+                    var allocationIndexProvider =
+                        indexBlockProviderFactory.Create(header.AllocationBlock, accessParameters);
+                    return indexFactory.Create(allocationIndexProvider, accessParameters);
+                });
 
-            allocationManager = new AllocationManager(AllocationIndexFactory, storage, header.FreeBlockCount);
+            allocationManager = allocationManagerFactory.Create(allocationIndexFactory, storage, header.FreeBlockCount);
 
-            var dictionaryCache = new DirectoryCache(storage, allocationManager);
+            var dictionaryCache = directoryCacheFactory.Create(new CommonAccessParameters(storage, allocationManager));
             var rootDirectory = dictionaryCache.ReadDirectory(header.RootDirectoryBlock);
 
             RootDirectory = rootDirectory;
-            DirectoryCache = DirectoryCache;
+            DirectoryCache = dictionaryCache;
         }
 
         private FSHeader CreateFile()

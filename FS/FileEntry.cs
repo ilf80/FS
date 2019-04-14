@@ -10,7 +10,7 @@ namespace FS
         private IFile file;
         private bool isDisposed;
 
-        internal FileEntry(IDirectoryCache directoryCache, IFile file)
+        public FileEntry(IDirectoryCache directoryCache, IFile file)
         {
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             this.file = file ?? throw new ArgumentNullException(nameof(file));

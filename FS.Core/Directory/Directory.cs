@@ -3,22 +3,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using FS.Api;
+using FS.Api.Container;
+using FS.Core.Api.BlockAccess;
 using FS.Core.Api.BlockAccess.Indexes;
+using FS.Core.Api.Common;
 using FS.Core.Api.Directory;
-using FS.Core.BlockAccess;
-using FS.Core.BlockAccess.Indexes;
 using FS.Core.Utils;
 
 namespace FS.Core.Directory
 {
-    internal sealed class Directory : IDirectory
+    internal sealed class Directory : IUnsafeDirectory
     {
         private readonly IIndex<DirectoryItem> index;
         private readonly IDirectoryCache directoryCache;
+        private readonly IFactory<IIndexBlockProvider, int, ICommonAccessParameters> indexBlockProviderFactory;
+        private readonly IFactory<IIndex<DirectoryItem>, IIndexBlockProvider, ICommonAccessParameters> directoryIndexFactory;
+        private readonly IFactory<IDirectory, IIndex<DirectoryItem>, IDirectoryCache, DirectoryHeader> directoryFactory;
+        private readonly IFactory<IFile, IFileParameters, IDirectoryCache> fileFactory;
+        private readonly IFactory<IDeletionFile, IFileParameters, IDirectoryCache> deletionFileFactory;
+        private readonly IFactory<IDeletionDirectory, int, IDirectoryCache> deletionDirectoryFactory;
         private readonly int parentDirectoryBlockId;
-        private readonly BlockStream<DirectoryItem> blockStream;
-        private readonly Index<short> nameIndex;
-        private readonly BlockStream<short> nameIndexBlockStream;
+        private readonly IBlockStream<DirectoryItem> blockStream;
+        private readonly IIndex<short> nameIndex;
+        private readonly IBlockStream<short> nameIndexBlockStream;
         private readonly ReaderWriterLockSlim indexLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private readonly int nameBlockIndex;
 
@@ -26,20 +33,39 @@ namespace FS.Core.Directory
         private int itemsCount;
         private int lastNameOffset;
 
-        private Directory(
+        public Directory(
             IIndex<DirectoryItem> index,
             IDirectoryCache directoryCache,
-            DirectoryHeader header)
+            DirectoryHeader header,
+            IFactory<IIndexBlockProvider, int, ICommonAccessParameters> indexBlockProviderFactory,
+            IFactory<IIndex<short>, IIndexBlockProvider, ICommonAccessParameters> indexFactory,
+            IFactory<IBlockStream<short>, IBlockProvider<short>> blockStreamFactory,
+            IFactory<IIndex<DirectoryItem>, IIndexBlockProvider, ICommonAccessParameters> directoryIndexFactory,
+            IFactory<IDirectory, IIndex<DirectoryItem>, IDirectoryCache, DirectoryHeader> directoryFactory,
+            IFactory<IFile, IFileParameters, IDirectoryCache> fileFactory,
+            IFactory<IBlockStream<DirectoryItem>, IBlockProvider<DirectoryItem>> directoryBlockStreamFactory,
+            IFactory<IDeletionFile, IFileParameters, IDirectoryCache> deletionFileFactory,
+            IFactory<IDeletionDirectory, int, IDirectoryCache> deletionDirectoryFactory
+                )
         {
+            if (indexFactory == null) throw new ArgumentNullException(nameof(indexFactory));
+            if (directoryBlockStreamFactory == null)
+                throw new ArgumentNullException(nameof(directoryBlockStreamFactory));
             this.index = index ?? throw new ArgumentNullException(nameof(index));
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
-            blockStream = new BlockStream<DirectoryItem>(index);
-            nameBlockIndex = header.NameBlockIndex;
+            this.indexBlockProviderFactory = indexBlockProviderFactory ?? throw new ArgumentNullException(nameof(indexBlockProviderFactory));
+            this.directoryIndexFactory = directoryIndexFactory ?? throw new ArgumentNullException(nameof(directoryIndexFactory));
+            this.directoryFactory = directoryFactory ?? throw new ArgumentNullException(nameof(directoryFactory));
+            this.fileFactory = fileFactory ?? throw new ArgumentNullException(nameof(fileFactory));
+            this.deletionFileFactory = deletionFileFactory ?? throw new ArgumentNullException(nameof(deletionFileFactory));
+            this.deletionDirectoryFactory = deletionDirectoryFactory ?? throw new ArgumentNullException(nameof(deletionDirectoryFactory));
 
-            var nameIndexProvider = new IndexBlockProvider(nameBlockIndex, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            var nameIndexProviderBlockStream = new BlockStream<int>(nameIndexProvider);
-            nameIndex = new Index<short>(nameIndexProvider, nameIndexProviderBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            nameIndexBlockStream = new BlockStream<short>(nameIndex);
+            blockStream = directoryBlockStreamFactory.Create(index);
+
+            nameBlockIndex = header.NameBlockIndex;
+            var nameIndexProvider = indexBlockProviderFactory.Create(nameBlockIndex, directoryCache);
+            nameIndex = indexFactory.Create(nameIndexProvider, directoryCache);
+            nameIndexBlockStream = blockStreamFactory.Create(nameIndex);
 
             firstEmptyItemOffset = header.FirstEmptyItemOffset;
             itemsCount = header.ItemsCount;
@@ -75,9 +101,8 @@ namespace FS.Core.Directory
                 {
                     var blocks = directoryCache.AllocationManager.Allocate(2);
 
-                    var directoryIndexProvider = new IndexBlockProvider(blocks[1], directoryCache.AllocationManager, directoryCache.Storage);
-                    var directoryIndexBlockStream = new BlockStream<int>(directoryIndexProvider);
-                    var directoryIndex = new Index<DirectoryItem>(directoryIndexProvider, directoryIndexBlockStream, directoryCache.AllocationManager, directoryCache.Storage);
+                    var directoryIndexProvider = indexBlockProviderFactory.Create(blocks[1], directoryCache);
+                    var directoryIndex = directoryIndexFactory.Create(directoryIndexProvider, directoryCache);
                     directoryIndex.SetSizeInBlocks(1);
                     directoryIndex.Flush();
 
@@ -89,10 +114,10 @@ namespace FS.Core.Directory
                         NameBlockIndex = blocks[0],
                         ParentDirectoryBlockIndex = index.BlockId
                     };
-                    var directory = new Directory(directoryIndex, directoryCache, header);
-                    directory.UpdateHeader();
 
+                    var directory = directoryFactory.Create(directoryIndex, directoryCache, header);
                     AddEntry(directoryIndex.BlockId, name, DirectoryFlags.Directory);
+                    directory.Flush();
 
                     return directoryCache.RegisterDirectory(directory);
                 }
@@ -123,7 +148,7 @@ namespace FS.Core.Directory
                     }
                     return directoryCache.ReadFile(
                         entry.BlockId,
-                        () => new File(directoryCache, entry.BlockId, BlockId, entry.Size));
+                        () => fileFactory.Create(new FileParameters(entry.BlockId, BlockId, entry.Size), directoryCache));
                 }
                 if (openMode == OpenMode.OpenExisting)
                 {
@@ -136,7 +161,7 @@ namespace FS.Core.Directory
                     var blocks = directoryCache.AllocationManager.Allocate(1);
                     AddEntry(blocks[0], name, DirectoryFlags.File);
 
-                    var result = new File(directoryCache, blocks[0], BlockId, 0);
+                    var result = fileFactory.Create(new FileParameters(blocks[0], BlockId, 0), directoryCache);
                     result.SetSize(1);
                     result.Flush();
 
@@ -169,7 +194,9 @@ namespace FS.Core.Directory
                 indexLock.EnterWriteLock();
                 try
                 {
-                    var deletionFile = new DeletionFile(directoryCache, entry.BlockId, BlockId);
+                    var deletionFile = deletionFileFactory.Create(
+                        new FileParameters(entry.BlockId, BlockId, 0),
+                        directoryCache);
                     var resultFile = directoryCache.ReadFile(
                         entry.BlockId,
                         () => deletionFile);
@@ -207,7 +234,7 @@ namespace FS.Core.Directory
                 indexLock.EnterWriteLock();
                 try
                 {
-                    var deletionDirectory = new DeletionDirectory(directoryCache, entry.BlockId);
+                    var deletionDirectory = deletionDirectoryFactory.Create(entry.BlockId, directoryCache);
                     var resultDirectory = directoryCache.RegisterDirectory(deletionDirectory);
 
                     if (deletionDirectory != resultDirectory)
@@ -269,6 +296,9 @@ namespace FS.Core.Directory
             indexLock.EnterReadLock();
             try
             {
+                UpdateHeader();
+                UpdateAccessTime();
+
                 index.Flush();
                 nameIndex.Flush();
             }
@@ -313,7 +343,7 @@ namespace FS.Core.Directory
             throw new Exception("Entry not found");
         }
 
-        internal void UnsafeDeleteDirectory()
+        public void UnsafeDeleteDirectory()
         {
             index.SetSizeInBlocks(0);
             nameIndex.SetSizeInBlocks(0);
@@ -360,10 +390,7 @@ namespace FS.Core.Directory
             firstEmptyItemOffset = FindEmptyItem(firstEmptyItemOffset);
             itemsCount++;
 
-            UpdateHeader();
             Flush();
-
-            UpdateAccessTime();
         }
 
         private int FindEmptyItem(int startIndex)
@@ -451,19 +478,6 @@ namespace FS.Core.Directory
             {
                 throw new ArgumentException($"File or directory name is too long. Mex length is {short.MaxValue}", nameof(name));
             }
-        }
-
-        internal static Directory ReadDirectoryUnsafe(int blockId, IDirectoryCache directoryManager)
-        {
-            var indexBlockProvider = new IndexBlockProvider(blockId, directoryManager.AllocationManager, directoryManager.Storage);
-            var index = new Index<DirectoryItem>(indexBlockProvider, new BlockStream<int>(indexBlockProvider), directoryManager.AllocationManager, directoryManager.Storage);
-            var indexStream = new BlockStream<DirectoryItem>(index);
-
-            var buffer = new DirectoryItem[1];
-            indexStream.Read(0, buffer);
-            var header = buffer[0].Header;
-
-            return new Directory(index, directoryManager, header);
         }
     }
 }

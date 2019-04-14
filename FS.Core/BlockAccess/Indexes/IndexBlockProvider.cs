@@ -1,30 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using FS.Core.Api.Allocation;
-using FS.Core.Api.BlockAccess;
 using FS.Core.Api.BlockAccess.Indexes;
+using FS.Core.Api.Common;
 using FS.Core.Contracts;
 
 namespace FS.Core.BlockAccess.Indexes
 {
     internal sealed class IndexBlockProvider : IIndexBlockProvider
     {
+        private readonly ICommonAccessParameters accessParameters;
         private readonly LinkedList<int[]> indexList = new LinkedList<int[]>();
-        private readonly IAllocationManager allocationManager;
-        private readonly IBlockStorage storage;
         private bool isDirty;
 
         public IndexBlockProvider(
             int rootBlockIndex,
-            IAllocationManager allocationManager,
-            IBlockStorage storage)
+            ICommonAccessParameters accessParameters)
         {
             if (rootBlockIndex < 0) throw new ArgumentOutOfRangeException(nameof(rootBlockIndex));
+            this.accessParameters = accessParameters ?? throw new ArgumentNullException(nameof(accessParameters));
 
             BlockId = rootBlockIndex;
-            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
-            this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
         public int BlockId { get; }
@@ -95,7 +91,7 @@ namespace FS.Core.BlockAccess.Indexes
 
             if (indexList.Count < count)
             {
-                var blocks = allocationManager.Allocate(count - indexList.Count);
+                var blocks = accessParameters.AllocationManager.Allocate(count - indexList.Count);
                 foreach(var blockId in blocks)
                 {
                     SetNextExtensionBlockIndex(indexList.Last.Value, blockId);
@@ -110,7 +106,7 @@ namespace FS.Core.BlockAccess.Indexes
                     indexList.RemoveLast();
                     SetNextExtensionBlockIndex(indexList.Last.Value, Constants.EmptyBlockIndex);
                 }
-                allocationManager.Release(blocks);
+                accessParameters.AllocationManager.Release(blocks);
             }
         }
 
@@ -124,7 +120,7 @@ namespace FS.Core.BlockAccess.Indexes
             var blockIndex = BlockId;
             foreach(var indexPage in indexList)
             {
-                storage.WriteBlock(blockIndex, indexPage);
+                accessParameters.Storage.WriteBlock(blockIndex, indexPage);
                 blockIndex = GetNextExtensionBlockIndex(indexPage);
             }
 
@@ -148,7 +144,7 @@ namespace FS.Core.BlockAccess.Indexes
                 extensionBlockIndex = GetNextExtensionBlockIndex(index))
             {
                 index = new int[Constants.IndexPageSize];
-                storage.ReadBlock(extensionBlockIndex, index);
+                accessParameters.Storage.ReadBlock(extensionBlockIndex, index);
                 indexList.AddLast(index);
             }
         }

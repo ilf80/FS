@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using FS.Core.Api.Allocation;
+using FS.Api.Container;
 using FS.Core.Api.BlockAccess;
 using FS.Core.Api.BlockAccess.Indexes;
+using FS.Core.Api.Common;
 
 namespace FS.Core.BlockAccess.Indexes
 {
@@ -11,25 +12,24 @@ namespace FS.Core.BlockAccess.Indexes
         private static readonly int StructSize = Marshal.SizeOf<T>();
 
         private readonly IIndexBlockProvider provider;
+        private readonly ICommonAccessParameters accessParameters;
         private readonly IBlockStream<int> indexBlockStream;
-        private readonly IBlockStorage storage;
-        private readonly IAllocationManager allocationManager;
 
         public Index(
             IIndexBlockProvider provider,
-            IBlockStream<int> blockStream,
-            IAllocationManager allocationManager,
-            IBlockStorage storage)
+            IFactory<IBlockStream<int>, IBlockProvider<int>> blockStreamFactory,
+            ICommonAccessParameters accessParameters)
         {
             this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            indexBlockStream = blockStream ?? throw new ArgumentNullException(nameof(blockStream));
-            this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
+            this.accessParameters = accessParameters ?? throw new ArgumentNullException(nameof(accessParameters));
+            if (blockStreamFactory == null) throw new ArgumentNullException(nameof(blockStreamFactory));
+
+            indexBlockStream = blockStreamFactory.Create(this.provider);
         }
 
         public int BlockId => provider.BlockId;
 
-        public int BlockSize => storage.BlockSize / EntrySize;
+        public int BlockSize => accessParameters.Storage.BlockSize / EntrySize;
 
         public int EntrySize => StructSize;
 
@@ -73,7 +73,7 @@ namespace FS.Core.BlockAccess.Indexes
                 provider.SetSizeInBlocks(count / provider.BlockSize + (count % provider.BlockSize == 0 ? 0 : 1));
 
                 var allocateBlockCount = count - currentBlockCount;
-                var blocks = allocationManager.Allocate(allocateBlockCount);
+                var blocks = accessParameters.AllocationManager.Allocate(allocateBlockCount);
                 indexBlockStream.Write(currentBlockCount, blocks);
             }
             else
@@ -81,7 +81,7 @@ namespace FS.Core.BlockAccess.Indexes
                 var releaseBlockCount = currentBlockCount - count;
                 var blocks = new int[releaseBlockCount];
                 indexBlockStream.Read(currentBlockCount - releaseBlockCount, blocks);
-                allocationManager.Release(blocks);
+                accessParameters.AllocationManager.Release(blocks);
 
                 blocks = new int[releaseBlockCount];
                 indexBlockStream.Write(currentBlockCount - releaseBlockCount, blocks);
@@ -92,7 +92,7 @@ namespace FS.Core.BlockAccess.Indexes
 
         private int[] GetDataBlocks(int index, int entryCount)
         {
-            var blockCount = (entryCount * EntrySize) / storage.BlockSize;
+            var blockCount = (entryCount * EntrySize) / accessParameters.Storage.BlockSize;
             var blocks = new int[blockCount];
             indexBlockStream.Read(index, blocks);
             return blocks;
@@ -101,7 +101,7 @@ namespace FS.Core.BlockAccess.Indexes
         private void ProcessData(int index, T[] buffer, bool write)
         {
             var bufferOffset = 0;
-            var tempBufferSize = storage.BlockSize / EntrySize;
+            var tempBufferSize = accessParameters.Storage.BlockSize / EntrySize;
             var tempBuffer = new T[tempBufferSize];
             var blocks = GetDataBlocks(index, buffer.Length);
             foreach (var blockId in blocks)
@@ -109,11 +109,11 @@ namespace FS.Core.BlockAccess.Indexes
                 if (write)
                 {
                     Array.Copy(buffer, bufferOffset, tempBuffer, 0, tempBufferSize);
-                    storage.WriteBlock(blockId, tempBuffer);
+                    accessParameters.Storage.WriteBlock(blockId, tempBuffer);
                 }
                 else
                 {
-                    storage.ReadBlock(blockId, tempBuffer);
+                    accessParameters.Storage.ReadBlock(blockId, tempBuffer);
                     Array.Copy(tempBuffer, 0, buffer, bufferOffset, tempBufferSize);
                 }
                 bufferOffset += tempBufferSize;

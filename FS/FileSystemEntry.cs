@@ -6,7 +6,7 @@ namespace FS
 {
     internal sealed class FileSystemEntry : IFileSystemEntry
     {
-        internal FileSystemEntry(IDirectoryEntryInfo info)
+        public FileSystemEntry(IDirectoryEntryInfo info)
         {
             IsDirectory = info.IsDirectory;
             Name = info.Name;

@@ -1,8 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Unity" Version="5.10.3" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FS.Core.Api\FS.Core.Api.csproj" />

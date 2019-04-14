@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using FS.Api.Container;
 using FS.Core.Api.Allocation;
 using FS.Core.Api.BlockAccess;
 using FS.Core.Api.BlockAccess.Indexes;
@@ -18,14 +19,14 @@ namespace FS.Core.Allocation
         private readonly object lockObject = new object();
 
         public AllocationManager(
-            Func<IAllocationManager, IIndex<int>> indexFactory,
+            IFactory<IIndex<int>, IAllocationManager> indexFactory,
             IBlockStorage storage,
             int freeSpaceBlocksCount)
         {
             if (indexFactory == null) throw new ArgumentNullException(nameof(indexFactory));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
-            index = indexFactory(this);
+            index = indexFactory.Create(this);
             blockStream = new BlockStream<int>(index);
             ReleasedBlockCount = freeSpaceBlocksCount;
         }

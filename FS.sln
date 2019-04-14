@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FS.Core", "FS.Core\FS.Core.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FS.Core.Api", "FS.Core.Api\FS.Core.Api.csproj", "{1A0A3EFA-0F1D-4331-975A-9894DA449633}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FS.Core.Tests", "FS.Core.Tests\FS.Core.Tests.csproj", "{757746B0-6159-4D0E-912A-CF72597E7A8E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{1A0A3EFA-0F1D-4331-975A-9894DA449633}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A0A3EFA-0F1D-4331-975A-9894DA449633}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A0A3EFA-0F1D-4331-975A-9894DA449633}.Release|Any CPU.Build.0 = Release|Any CPU
+		{757746B0-6159-4D0E-912A-CF72597E7A8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{757746B0-6159-4D0E-912A-CF72597E7A8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{757746B0-6159-4D0E-912A-CF72597E7A8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{757746B0-6159-4D0E-912A-CF72597E7A8E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

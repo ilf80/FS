@@ -1,35 +1,35 @@
 ﻿using System;
+using FS.Api.Container;
+using FS.Core.Api.BlockAccess.Indexes;
+using FS.Core.Api.Common;
 using FS.Core.Api.Directory;
-using FS.Core.BlockAccess;
-using FS.Core.BlockAccess.Indexes;
 
 namespace FS.Core.Directory
 {
-    internal sealed class DeletionFile : IFile
+    internal sealed class DeletionFile : IDeletionFile
     {
-        private readonly int directoryBlockId;
         private IDirectoryCache directoryCache;
-        private Index<byte> index;
+        private readonly IFileParameters fileParameters;
+        private IIndex<byte> index;
 
         public DeletionFile(
            IDirectoryCache directoryCache,
-           int blockId,
-           int directoryBlockId)
+           IFactory<IIndexBlockProvider, int, ICommonAccessParameters> indexBlockProviderFactory,
+           IFactory<IIndex<byte>, IIndexBlockProvider, ICommonAccessParameters> indexFactory,
+           IFileParameters fileParameters)
         {
-            if (blockId < 0) throw new ArgumentOutOfRangeException(nameof(blockId));
-            if (directoryBlockId < 0) throw new ArgumentOutOfRangeException(nameof(directoryBlockId));
+            if (indexBlockProviderFactory == null) throw new ArgumentNullException(nameof(indexBlockProviderFactory));
+            if (indexFactory == null) throw new ArgumentNullException(nameof(indexFactory));
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
-            BlockId = blockId;
-            this.directoryBlockId = directoryBlockId;
+            this.fileParameters = fileParameters ?? throw new ArgumentNullException(nameof(fileParameters));
 
-            var provider = new IndexBlockProvider(blockId, this.directoryCache.AllocationManager, this.directoryCache.Storage);
-            var indexBlockStream = new BlockStream<int>(provider);
-            index = new Index<byte>(provider, indexBlockStream, this.directoryCache.AllocationManager, this.directoryCache.Storage);
+            var provider = indexBlockProviderFactory.Create(fileParameters.BlockId, directoryCache);
+            index = indexFactory.Create(provider, directoryCache);
         }
 
         public int Size => throw new InvalidOperationException("File is being deleted");
 
-        public int BlockId { get; }
+        public int BlockId => fileParameters.BlockId;
 
         public void Dispose()
         {
@@ -59,7 +59,7 @@ namespace FS.Core.Directory
 
         public void Delete()
         {
-            var directory = directoryCache.ReadDirectory(directoryBlockId);
+            var directory = directoryCache.ReadDirectory(fileParameters.ParentDirectoryBlockId);
             try
             {
                 directory.UpdateEntry(BlockId, new DirectoryEntryInfoOverrides(flags: DirectoryFlags.File | DirectoryFlags.Deleted));

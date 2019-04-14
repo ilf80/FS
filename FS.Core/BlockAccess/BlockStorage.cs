@@ -166,7 +166,7 @@ namespace FS.Core.BlockAccess
         public void Dispose()
         {
             isDisposed = true;
-            fileStream.Dispose();
+            fileStream?.Dispose();
             lockObject.Dispose();
         }
 

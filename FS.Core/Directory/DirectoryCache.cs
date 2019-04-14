@@ -1,28 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using FS.Api.Container;
 using FS.Core.Api.Allocation;
 using FS.Core.Api.BlockAccess;
+using FS.Core.Api.Common;
 using FS.Core.Api.Directory;
 
 namespace FS.Core.Directory
 {
     internal sealed class DirectoryCache : IDirectoryCache
     {
+        private readonly ICommonAccessParameters accessParameters;
         private readonly Dictionary<int, DirectoryWithRefCount> openedDirectories = new Dictionary<int, DirectoryWithRefCount>();
         private readonly Dictionary<int, FileWithRefCount> openedFiles = new Dictionary<int, FileWithRefCount>();
         private readonly ReaderWriterLockSlim cacheLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        private readonly IUnsafeDirectoryReader unsafeDirectoryReader;
         private bool isDisposed;
 
-        public DirectoryCache(IBlockStorage storage, IAllocationManager allocationManager)
+        public DirectoryCache(
+            ICommonAccessParameters accessParameters,
+            IFactory<IUnsafeDirectoryReader, IDirectoryCache> unsafeDirectoryReaderFactory)
         {
-            Storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            AllocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
+            if (unsafeDirectoryReaderFactory == null)
+                throw new ArgumentNullException(nameof(unsafeDirectoryReaderFactory));
+            this.accessParameters = accessParameters ?? throw new ArgumentNullException(nameof(accessParameters));
+            unsafeDirectoryReader = unsafeDirectoryReaderFactory.Create(this);
         }
 
-        public IBlockStorage Storage { get; }
+        public IBlockStorage Storage => accessParameters.Storage;
 
-        public IAllocationManager AllocationManager { get; }
+        public IAllocationManager AllocationManager => accessParameters.AllocationManager;
 
         public IDirectory ReadDirectory(int blockId)
         {
@@ -54,7 +62,7 @@ namespace FS.Core.Directory
                     }
                     directoryWithRefCount = new DirectoryWithRefCount
                     {
-                        Directory = Directory.ReadDirectoryUnsafe(blockId, this),
+                        Directory = unsafeDirectoryReader.Read(blockId),
                         RefCount = 1
                     };
                     openedDirectories.Add(blockId, directoryWithRefCount);

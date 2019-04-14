@@ -1,36 +1,47 @@
-﻿using FS.Api;
-using NUnit.Framework;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using FS.Api;
+using FS.Api.Container;
+using FS.Container;
+using FS.Core.Container;
+using NUnit.Framework;
+using Unity;
 
 namespace FS.Tests.IntegrationTests
 {
     [TestFixture]
-    public sealed class CreateFSWith100Dirs
+    public sealed class CreateFsWith100Dirs
     {
         private string filePath;
         private Stream stream;
+        private IUnityContainer container;
 
         [SetUp]
         public void SetUp()
         {
-            this.filePath = Path.Combine(Path.GetTempPath(), "TestFile.dat");
+            container = new UnityContainer()
+                .AddExtension(new CoreRegistration())
+                .AddExtension(new FactoryExtension())
+                .AddExtension(new FSExtentions())
+                .AddExtension(new Diagnostic());
+
+            filePath = Path.Combine(Path.GetTempPath(), "TestFile.dat");
 
             var assembly = Assembly.GetExecutingAssembly();
-            this.stream = assembly.GetManifestResourceStream("FS.Tests.Program.cs");
+            stream = assembly.GetManifestResourceStream("FS.Tests.Program.cs");
         }
 
         [TearDown]
         public void TearDown()
         {
-            this.stream.Close();
-            if (System.IO.File.Exists(this.filePath))
+            stream.Close();
+            if (File.Exists(filePath))
             {
-                System.IO.File.Delete(this.filePath);
+                File.Delete(filePath);
             }
         }
 
@@ -38,8 +49,9 @@ namespace FS.Tests.IntegrationTests
         public void GenerateDirectoriesAndRead()
         {
             var nameList = new List<string>();
-            using (var fs = FileSystem.Create(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.Create);
                 var root = fs.GetRootDirectory();
 
                 
@@ -53,7 +65,7 @@ namespace FS.Tests.IntegrationTests
                 using (var file = root.OpenFile("Program.cs", OpenMode.OpenOrCreate))
                 using (var memoryStream = new MemoryStream())
                 using (var writer = new BinaryWriter(memoryStream, Encoding.Unicode))
-                using (var reader = new StreamReader(this.stream))
+                using (var reader = new StreamReader(stream))
                 {
                     writer.Write(reader.ReadToEnd());
                     file.SetSize((int)memoryStream.Length);
@@ -62,8 +74,9 @@ namespace FS.Tests.IntegrationTests
                 nameList.Add("Program.cs");
             }
 
-            using (var fs = FileSystem.Open(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.OpenExisting);
                 var root = fs.GetRootDirectory();
 
                 CollectionAssert.AreEqual(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
@@ -74,8 +87,10 @@ namespace FS.Tests.IntegrationTests
         public void GenerateDirectoriesDeleteOneAndRead()
         {
             var nameList = new List<string>();
-            using (var fs = FileSystem.Create(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.Create);
+
                 var root = fs.GetRootDirectory();
 
 
@@ -89,7 +104,7 @@ namespace FS.Tests.IntegrationTests
                 using (var file = root.OpenFile("Program.cs", OpenMode.OpenOrCreate))
                 using (var memoryStream = new MemoryStream())
                 using (var writer = new BinaryWriter(memoryStream, Encoding.Unicode))
-                using (var reader = new StreamReader(this.stream))
+                using (var reader = new StreamReader(stream))
                 {
                     writer.Write(reader.ReadToEnd());
                     file.SetSize((int)memoryStream.Length);
@@ -101,8 +116,9 @@ namespace FS.Tests.IntegrationTests
                 nameList.Remove("Dir 99");
             }
 
-            using (var fs = FileSystem.Open(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.OpenExisting);
                 var root = fs.GetRootDirectory();
 
                 CollectionAssert.AreEqual(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
@@ -113,8 +129,10 @@ namespace FS.Tests.IntegrationTests
         public void GenerateDirectoriesDeleteFileAndRead()
         {
             var nameList = new List<string>();
-            using (var fs = FileSystem.Create(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.Create);
+
                 var root = fs.GetRootDirectory();
 
 
@@ -128,7 +146,7 @@ namespace FS.Tests.IntegrationTests
                 using (var file = root.OpenFile("Program.cs", OpenMode.OpenOrCreate))
                 using (var memoryStream = new MemoryStream())
                 using (var writer = new BinaryWriter(memoryStream, Encoding.Unicode))
-                using (var reader = new StreamReader(this.stream))
+                using (var reader = new StreamReader(stream))
                 {
                     writer.Write(reader.ReadToEnd());
                     file.SetSize((int)memoryStream.Length);
@@ -137,8 +155,9 @@ namespace FS.Tests.IntegrationTests
                 root.DeleteFile("Program.cs");
             }
 
-            using (var fs = FileSystem.Open(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.OpenExisting);
                 var root = fs.GetRootDirectory();
 
                 CollectionAssert.AreEqual(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
@@ -148,8 +167,10 @@ namespace FS.Tests.IntegrationTests
         [Test]
         public void GenerateDirectoriesInThreadsAndRead()
         {
-            using (var fs = FileSystem.Create(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.Create);
+
                 var root = fs.GetRootDirectory();
 
                 var task1 = new Task(() =>
@@ -178,8 +199,9 @@ namespace FS.Tests.IntegrationTests
 
             var nameList = new List<string>();
             for (var i = 0; i < 150; i++) nameList.Add("Dir " + i);
-            using (var fs = FileSystem.Open(this.filePath))
+            using (var fs = container.Resolve<IFileSystem>())
             {
+                fs.Open(filePath, OpenMode.OpenExisting);
                 var root = fs.GetRootDirectory();
 
                 CollectionAssert.AreEquivalent(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
