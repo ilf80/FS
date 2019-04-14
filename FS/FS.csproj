@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FS.Api\FS.Api.csproj" />
+    <ProjectReference Include="..\FS.Core.Api\FS.Core.Api.csproj" />
+  </ItemGroup>
+
+</Project>
