@@ -59,35 +59,37 @@ namespace FS.Core.Tests.BlockAccess
             CollectionAssert.AreEqual(expected, result);
         }
 
-        //[Test]
-        //[TestCase(0, new byte[] { 40, 41, 42, 43 }, new byte[] { 40, 41, 42, 43, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 })]
-        //[TestCase(5, new byte[] { 40, 41, 42, 43 }, new byte[] { 1, 2, 3, 4, 5, 40, 41, 42, 43, 10, 11, 12, 13, 14, 15, 16, 17 })]
-        //public void ShouldWriteFirstBlock(int position, byte[] toWrite, byte[] expected)
-        //{
-        //    // Given
-        //    var instance = CreateInstance();
+        [Test]
+        [TestCase(0, new byte[] { 40, 41, 42, 43 }, new byte[] { 40, 41, 42, 43, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 })]
+        [TestCase(5, new byte[] { 40, 41, 42, 43 }, new byte[] { 1, 2, 3, 4, 5, 40, 41, 42, 43, 10, 11, 12, 13, 14, 15, 16, 17 })]
+        public void ShouldWriteFirstBlock(int position, byte[] toWrite, byte[] expected)
+        {
+            // Given
+            var instance = CreateInstance();
 
-        //    // When
-        //    instance.Write(position, toWrite);
+            // When
+            instance.Write(position, toWrite);
 
-        //    // Then
-        //    provider.Verify(x => x.Write(0, It.Is<byte[]>(result => CollectionsAreEqual(expected, result))));
-        //}
+            // Then
+            A.CallTo(() => provider.Write(0, A<byte[]>.That.Matches(result => CollectionsAreEqual(expected, result))))
+                .MustHaveHappened(1, Times.Exactly);
+        }
 
-        //[Test]
-        //[TestCase(20, new byte[] { 40, 41, 42, 43 }, new byte[] { 21, 22, 23, 40, 41, 42, 43, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 })]
-        //[TestCase(25, new byte[] { 40, 41, 42, 43 }, new byte[] { 21, 22, 23, 24, 25, 26, 27, 28, 40, 41, 42, 43, 33, 34, 35, 36, 37 })]
-        //public void ShouldWriteSecondBlock(int position, byte[] toWrite, byte[] expected)
-        //{
-        //    // Given
-        //    var instance = CreateInstance();
+        [Test]
+        [TestCase(20, new byte[] { 40, 41, 42, 43 }, new byte[] { 21, 22, 23, 40, 41, 42, 43, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 })]
+        [TestCase(25, new byte[] { 40, 41, 42, 43 }, new byte[] { 21, 22, 23, 24, 25, 26, 27, 28, 40, 41, 42, 43, 33, 34, 35, 36, 37 })]
+        public void ShouldWriteSecondBlock(int position, byte[] toWrite, byte[] expected)
+        {
+            // Given
+            var instance = CreateInstance();
 
-        //    // When
-        //    instance.Write(position, toWrite);
+            // When
+            instance.Write(position, toWrite);
 
-        //    // Then
-        //    provider.Verify(x => x.Write(1, It.Is<byte[]>(result => CollectionsAreEqual(expected, result))));
-        //}
+            // Then
+            A.CallTo(() => provider.Write(1, A<byte[]>.That.Matches(result => CollectionsAreEqual(expected, result))))
+                .MustHaveHappened(1, Times.Exactly);
+        }
 
         private BlockStream<byte> CreateInstance()
         {
