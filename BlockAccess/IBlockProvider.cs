@@ -1,6 +1,6 @@
 ﻿namespace FS.BlockAccess
 {
-    internal interface IBlockProvider<T> where T : struct
+    internal interface IBlockProvider<in T> where T : struct
     {
         int BlockSize { get; }
 

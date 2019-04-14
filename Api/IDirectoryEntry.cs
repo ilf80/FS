@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace FS.Api
 {
     public interface IDirectoryEntry : IDisposable
     {
-        IFileSystemEntry[] GetEntries();
+        IEnumerable<IFileSystemEntry> GetEntries();
 
         IFileSystemEntry FindOrDefault(string name);
 

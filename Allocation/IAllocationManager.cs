@@ -1,8 +1,9 @@
 ﻿using FS.BlockAccess;
+using FS.Contracts;
 
-namespace FS.Allocattion
+namespace FS.Allocation
 {
-    internal interface IAllocationManager : IFlushable
+    internal interface IAllocationManager : ISupportsFlush
     {
         int ReleasedBlockCount { get; }
 

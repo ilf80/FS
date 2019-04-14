@@ -1,10 +1,11 @@
 ﻿using FS.Api;
-using FS.BlockAccess;
 using System;
+using System.Collections.Generic;
+using FS.Contracts;
 
 namespace FS.Directory
 {
-    internal interface IDirectory : IBlockHandle, IFlushable, IDisposable
+    internal interface IDirectory : IBlockHandle, ISupportsFlush, IDisposable
     {
         IDirectory OpenDirectory(string name, OpenMode openMode);
 

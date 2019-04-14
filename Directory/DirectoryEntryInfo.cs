@@ -14,16 +14,16 @@ namespace FS.Directory
             BlockId = header.BlockIndex;
         }
 
-        public bool IsDirectory { get; private set; }
+        public bool IsDirectory { get; }
 
-        public int Size { get; private set; }
+        public int Size { get; }
 
-        public DateTime Created { get; private set; }
+        public DateTime Created { get; }
 
-        public DateTime Updated { get; private set; }
+        public DateTime Updated { get; }
 
-        public string Name { get; private set; }
+        public string Name { get; }
 
-        public int BlockId { get; private set; }
+        public int BlockId { get; }
     }
 }

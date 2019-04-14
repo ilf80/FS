@@ -1,9 +1,9 @@
-﻿using FS.BlockAccess;
-using System;
+﻿using System;
+using FS.Contracts;
 
 namespace FS.Directory
 {
-    internal interface IFile : IBlockHandle, IFlushable, IDisposable
+    internal interface IFile : IBlockHandle, ISupportsFlush, IDisposable
     {
         int Size { get; }
 

@@ -1,5 +1,5 @@
-﻿using FS.Directory;
-using System;
+﻿using System;
+using FS.Directory;
 
 namespace FS.Api
 {
@@ -14,36 +14,35 @@ namespace FS.Api
             this.file = file ?? throw new ArgumentNullException(nameof(file));
         }
 
-        public int Size => this.file.Size;
+        public int Size => file.Size;
 
         public void Dispose()
         {
-            if (this.directoryCache != null && this.file != null)
-            {
-                this.directoryCache.UnRegisterFile(this.file.BlockId);
-                this.directoryCache = null;
-                this.file = null;
-            }
+            if (directoryCache == null || file == null) return;
+
+            directoryCache.UnRegisterFile(file.BlockId);
+            directoryCache = null;
+            file = null;
         }
 
         public void Flush()
         {
-            this.file.Flush();
+            file.Flush();
         }
 
         public void Read(int position, byte[] buffer)
         {
-            this.file.Read(position, buffer);
+            file.Read(position, buffer);
         }
 
         public void SetSize(int size)
         {
-            this.file.SetSize(size);
+            file.SetSize(size);
         }
 
         public void Write(int position, byte[] buffer)
         {
-            this.file.Write(position, buffer);
+            file.Write(position, buffer);
         }
     }
 }

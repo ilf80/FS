@@ -1,4 +1,4 @@
-﻿namespace FS.BlockAccess
+﻿namespace FS.Contracts
 {
     internal static class Constants
     {

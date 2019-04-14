@@ -1,20 +1,20 @@
-﻿using FS.Api;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using FS.Api;
 
 namespace FS.Directory
 {
     internal sealed class DeletionDirectory : IDirectory
     {
         private IDirectoryCache directoryCache;
-        private int blockId;
 
         public DeletionDirectory(IDirectoryCache directoryCache, int blockId)
         {
             this.directoryCache = directoryCache;
-            this.blockId = blockId;
+            BlockId = blockId;
         }
 
-        public int BlockId => this.blockId;
+        public int BlockId { get; }
 
         public void DeleteDirectory(string name)
         {
@@ -53,12 +53,12 @@ namespace FS.Directory
 
         public void Dispose()
         {
-            this.directoryCache = null;
+            directoryCache = null;
         }
 
         public void Delete()
         {
-            using (var directory = Directory.ReadDirectoryUnsafe(BlockId, this.directoryCache))
+            using (var directory = Directory.ReadDirectoryUnsafe(BlockId, directoryCache))
             {
                 if (directory.GetDirectoryEntries().Length > 0)
                 {
@@ -72,10 +72,7 @@ namespace FS.Directory
 
         private void UnRegister()
         {
-            if (this.directoryCache != null)
-            {
-                this.directoryCache.UnRegisterDirectory(BlockId);
-            }
+            directoryCache?.UnRegisterDirectory(BlockId);
         }
     }
 }

@@ -1,6 +1,6 @@
-﻿using FS.Allocattion;
-using FS.BlockAccess;
+﻿using FS.BlockAccess;
 using System;
+using FS.Allocation;
 
 namespace FS.Directory
 {

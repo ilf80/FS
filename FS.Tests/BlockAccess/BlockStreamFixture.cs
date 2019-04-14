@@ -1,7 +1,8 @@
-﻿using FS.BlockAccess;
+﻿
+using System;
+using FS.BlockAccess;
 using Moq;
 using NUnit.Framework;
-using System;
 
 namespace FS.Tests.BlockAccess
 {
@@ -15,19 +16,19 @@ namespace FS.Tests.BlockAccess
         [SetUp]
         public void SetUp()
         {
-            this.provider = new Mock<IBlockProvider<byte>>();
-            this.provider.SetupGet(x => x.BlockSize).Returns(17);
-            this.provider.SetupGet(x => x.EntrySize).Returns(1);
-            this.provider.SetupGet(x => x.SizeInBlocks).Returns(2);
-            this.provider
+            provider = new Mock<IBlockProvider<byte>>();
+            provider.SetupGet(x => x.BlockSize).Returns(17);
+            provider.SetupGet(x => x.EntrySize).Returns(1);
+            provider.SetupGet(x => x.SizeInBlocks).Returns(2);
+            provider
                 .Setup(x => x.Read(0, It.IsAny<byte[]>()))
-                .Callback((int position, byte[] buffer) => { Array.Copy(this.readBuffer, buffer, this.readBuffer.Length); });
-            this.provider
+                .Callback((int position, byte[] buffer) => { Array.Copy(readBuffer, buffer, readBuffer.Length); });
+            provider
                 .Setup(x => x.Read(1, It.IsAny<byte[]>()))
-                .Callback((int position, byte[] buffer) => { Array.Copy(this.readBuffer2, buffer, this.readBuffer2.Length); });
+                .Callback((int position, byte[] buffer) => { Array.Copy(readBuffer2, buffer, readBuffer2.Length); });
 
-            this.readBuffer = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-            this.readBuffer2 = new byte[] { 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 };
+            readBuffer = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+            readBuffer2 = new byte[] { 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 };
         }
 
         [Test]
@@ -66,7 +67,7 @@ namespace FS.Tests.BlockAccess
             instance.Write(position, toWrite);
 
             // Then
-            this.provider.Verify(x => x.Write(0, It.Is<byte[]>(result => CollectionsAreEqual(expected, result))));
+            provider.Verify(x => x.Write(0, It.Is<byte[]>(result => CollectionsAreEqual(expected, result))));
         }
 
         [Test]
@@ -81,12 +82,12 @@ namespace FS.Tests.BlockAccess
             instance.Write(position, toWrite);
 
             // Then
-            this.provider.Verify(x => x.Write(1, It.Is<byte[]>(result => CollectionsAreEqual(expected, result))));
+            provider.Verify(x => x.Write(1, It.Is<byte[]>(result => CollectionsAreEqual(expected, result))));
         }
 
         private BlockStream<byte> CreateInstance()
         {
-            return new BlockStream<byte>(this.provider.Object);
+            return new BlockStream<byte>(provider.Object);
         }
 
         private static bool CollectionsAreEqual(byte[] a, byte[] b)

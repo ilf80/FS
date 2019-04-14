@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using FS.Contracts;
 
 namespace FS.BlockAccess
 {
@@ -11,7 +12,7 @@ namespace FS.BlockAccess
         private readonly SemaphoreSlim lockObject = new SemaphoreSlim(1, 1);
         private FileStream fileStream;
 
-        public long TotalSize => this.fileStream.Length;
+        public long TotalSize => fileStream.Length;
 
         public int BlockSize => Constants.BlockSize;
 
@@ -23,7 +24,7 @@ namespace FS.BlockAccess
 
         public void Open()
         {
-            this.fileStream = new FileStream(this.fileName,
+            fileStream = new FileStream(fileName,
                 FileMode.OpenOrCreate,
                 FileAccess.ReadWrite,
                 FileShare.Read,
@@ -33,15 +34,15 @@ namespace FS.BlockAccess
 
         public void ReadBlock(int blockIndex, byte[] buffer)
         {
-            this.lockObject.Wait();
+            lockObject.Wait();
             try
             {
-                this.fileStream.Position = blockIndex * Constants.BlockSize;
-                this.fileStream.Read(buffer, 0, Constants.BlockSize);
+                fileStream.Position = blockIndex * Constants.BlockSize;
+                fileStream.Read(buffer, 0, Constants.BlockSize);
             }
             finally
             {
-                this.lockObject.Release();
+                lockObject.Release();
             }
         }
 
@@ -51,15 +52,15 @@ namespace FS.BlockAccess
             GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
             try
             {
-                this.lockObject.Wait();
+                lockObject.Wait();
                 try
                 {
-                    this.fileStream.Position = blockIndex * Constants.BlockSize;
-                    this.fileStream.Read(tempBuffer, 0, Constants.BlockSize);
+                    fileStream.Position = blockIndex * Constants.BlockSize;
+                    fileStream.Read(tempBuffer, 0, Constants.BlockSize);
                 }
                 finally
                 {
-                    this.lockObject.Release();
+                    lockObject.Release();
                 }
 
                 Marshal.Copy(tempBuffer, 0, handle.AddrOfPinnedObject(), tempBuffer.Length);
@@ -72,15 +73,15 @@ namespace FS.BlockAccess
 
         public void WriteBlock(int blockIndex, byte[] buffer)
         {
-            this.lockObject.Wait();
+            lockObject.Wait();
             try
             {
-                this.fileStream.Position = blockIndex * Constants.BlockSize;
-                this.fileStream.Write(buffer, 0, Constants.BlockSize);
+                fileStream.Position = blockIndex * Constants.BlockSize;
+                fileStream.Write(buffer, 0, Constants.BlockSize);
             }
             finally
             {
-                this.lockObject.Release();
+                lockObject.Release();
             }
         }
 
@@ -98,38 +99,38 @@ namespace FS.BlockAccess
                 handle.Free();
             }
 
-            this.lockObject.Wait();
+            lockObject.Wait();
             try
             {
-                this.fileStream.Position = blockIndex * Constants.BlockSize;
-                this.fileStream.Write(tempBuffer, 0, Constants.BlockSize);
+                fileStream.Position = blockIndex * Constants.BlockSize;
+                fileStream.Write(tempBuffer, 0, Constants.BlockSize);
             }
             finally
             {
-                this.lockObject.Release();
+                lockObject.Release();
             }
         }
 
         public int[] Extend(int blockCount)
         {
-            this.lockObject.Wait();
+            lockObject.Wait();
             try
             {
-                var length = (int)this.fileStream.Length;
+                var length = (int)fileStream.Length;
                 var result = Enumerable.Range(length / BlockSize + 1, blockCount).ToArray();
-                this.fileStream.SetLength(length + blockCount * BlockSize);
+                fileStream.SetLength(length + blockCount * BlockSize);
                 return result;
             }
             finally
             {
-                this.lockObject.Release();
+                lockObject.Release();
             }
         }
 
         public void Dispose()
         {
-            this.fileStream.Dispose();
-            this.lockObject.Dispose();
+            fileStream.Dispose();
+            lockObject.Dispose();
         }
     }
 }

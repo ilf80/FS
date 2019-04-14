@@ -1,6 +1,6 @@
 ﻿namespace FS.BlockAccess
 {
-    internal interface IBlockStream<T> where T : struct
+    internal interface IBlockStream<in T> where T : struct
     {
         IBlockProvider<T> Provider { get; }
 

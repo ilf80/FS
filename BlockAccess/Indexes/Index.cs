@@ -1,41 +1,41 @@
-﻿using FS.Allocattion;
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
+using FS.Allocation;
 
 namespace FS.BlockAccess.Indexes
 {
     internal sealed class Index<T> : IIndex<T> where T : struct
     {
-        static readonly int StructSize = Marshal.SizeOf<T>();
+        private static readonly int StructSize = Marshal.SizeOf<T>();
 
-        private readonly IIndexBlockProvier provider;
+        private readonly IIndexBlockProvider provider;
         private readonly IBlockStream<int> indexBlockStream;
         private readonly IBlockStorage storage;
         private readonly IAllocationManager allocationManager;
 
         public Index(
-            IIndexBlockProvier provider,
+            IIndexBlockProvider provider,
             IBlockStream<int> blockStream,
             IAllocationManager allocationManager,
             IBlockStorage storage)
         {
             this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            this.indexBlockStream = blockStream ?? throw new ArgumentNullException(nameof(blockStream));
+            indexBlockStream = blockStream ?? throw new ArgumentNullException(nameof(blockStream));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
             this.allocationManager = allocationManager ?? throw new ArgumentNullException(nameof(allocationManager));
         }
 
-        public int BlockId => this.provider.BlockId;
+        public int BlockId => provider.BlockId;
 
-        public int BlockSize => this.storage.BlockSize / EntrySize;
+        public int BlockSize => storage.BlockSize / EntrySize;
 
         public int EntrySize => StructSize;
 
-        public int SizeInBlocks => this.provider.UsedEntryCount;
+        public int SizeInBlocks => provider.UsedEntryCount;
 
         public void Flush()
         {
-            this.provider.Flush();
+            provider.Flush();
         }
 
         public void Read(int index, T[] buffer)
@@ -50,7 +50,7 @@ namespace FS.BlockAccess.Indexes
 
         public void SetSizeInBlocks(int count)
         {
-            var currentBlockCount = this.provider.UsedEntryCount;
+            var currentBlockCount = provider.UsedEntryCount;
             if (count == currentBlockCount)
             {
                 return;
@@ -58,38 +58,38 @@ namespace FS.BlockAccess.Indexes
 
             if (count > currentBlockCount)
             {
-                this.provider.SetSizeInBlocks(count / this.provider.BlockSize + (count % this.provider.BlockSize == 0 ? 0 : 1));
+                provider.SetSizeInBlocks(count / provider.BlockSize + (count % provider.BlockSize == 0 ? 0 : 1));
 
                 var allocateBlockCount = count - currentBlockCount;
-                var blocks = this.allocationManager.Allocate(allocateBlockCount);
-                this.indexBlockStream.Write(currentBlockCount, blocks);
+                var blocks = allocationManager.Allocate(allocateBlockCount);
+                indexBlockStream.Write(currentBlockCount, blocks);
             }
             else
             {
                 var releaseBlockCount = currentBlockCount - count;
                 var blocks = new int[releaseBlockCount];
-                this.indexBlockStream.Read(currentBlockCount - releaseBlockCount, blocks);
-                this.allocationManager.Release(blocks);
+                indexBlockStream.Read(currentBlockCount - releaseBlockCount, blocks);
+                allocationManager.Release(blocks);
 
                 blocks = new int[releaseBlockCount];
-                this.indexBlockStream.Write(currentBlockCount - releaseBlockCount, blocks);
+                indexBlockStream.Write(currentBlockCount - releaseBlockCount, blocks);
 
-                this.provider.SetSizeInBlocks(count / this.provider.BlockSize + count % this.provider.BlockSize == 0 ? 0 : 1);
+                provider.SetSizeInBlocks(count / provider.BlockSize + count % provider.BlockSize == 0 ? 0 : 1);
             }
         }
 
         private int[] GetDataBlocks(int index, int entryCount)
         {
-            var blockCount = (entryCount * EntrySize) / this.storage.BlockSize;
+            var blockCount = (entryCount * EntrySize) / storage.BlockSize;
             var blocks = new int[blockCount];
-            this.indexBlockStream.Read(index, blocks);
+            indexBlockStream.Read(index, blocks);
             return blocks;
         }
 
         private void ProcessData(int index, T[] buffer, bool write)
         {
             var bufferOffset = 0;
-            var tempBufferSize = this.storage.BlockSize / EntrySize;
+            var tempBufferSize = storage.BlockSize / EntrySize;
             var tempBuffer = new T[tempBufferSize];
             var blocks = GetDataBlocks(index, buffer.Length);
             foreach (var blockId in blocks)
@@ -97,11 +97,11 @@ namespace FS.BlockAccess.Indexes
                 if (write)
                 {
                     Array.Copy(buffer, bufferOffset, tempBuffer, 0, tempBufferSize);
-                    this.storage.WriteBlock(blockId, tempBuffer);
+                    storage.WriteBlock(blockId, tempBuffer);
                 }
                 else
                 {
-                    this.storage.ReadBlock(blockId, tempBuffer);
+                    storage.ReadBlock(blockId, tempBuffer);
                     Array.Copy(tempBuffer, 0, buffer, bufferOffset, tempBufferSize);
                 }
                 bufferOffset += tempBufferSize;

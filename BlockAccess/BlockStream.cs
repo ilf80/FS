@@ -8,10 +8,10 @@ namespace FS.BlockAccess
         public BlockStream(
             IBlockProvider<T> provider)
         {
-            Provider = provider ?? throw new System.ArgumentNullException(nameof(provider));
+            Provider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
-        public IBlockProvider<T> Provider { get; private set; }
+        public IBlockProvider<T> Provider { get; }
 
         public void Read(int position, T[] buffer)
         {
@@ -91,7 +91,7 @@ namespace FS.BlockAccess
             var blockIndex = Helpers.ModBaseWithFloor(position, Provider.BlockSize);
             if (blockIndex >= Provider.SizeInBlocks)
             {
-                throw new InvalidOperationException($"Adressed position {position} with buffer.length {length} are out of Provider blocks space");
+                throw new InvalidOperationException($"Addressed position {position} with buffer.length {length} are out of Provider blocks space");
             }
         }
     }

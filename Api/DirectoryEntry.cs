@@ -1,6 +1,7 @@
-﻿using FS.Directory;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using FS.Directory;
 
 namespace FS.Api
 {
@@ -8,36 +9,35 @@ namespace FS.Api
     {
         private IDirectoryCache directoryCache;
         private IDirectory directory;
-        private readonly bool unregisterDirectoryOnDispose;
+        private readonly bool unRegisterDirectoryOnDispose;
 
         internal DirectoryEntry(
             IDirectoryCache directoryCache,
             IDirectory directory,
-            bool unregisterDirectoryOnDispose = true)
+            bool unRegisterDirectoryOnDispose = true)
         {
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
             this.directory = directory ?? throw new ArgumentNullException(nameof(directory));
-            this.unregisterDirectoryOnDispose = unregisterDirectoryOnDispose;
+            this.unRegisterDirectoryOnDispose = unRegisterDirectoryOnDispose;
         }
 
         public void Dispose()
         {
-            if (this.directory != null && this.directoryCache != null)
-            {
-                this.directory.Flush();
+            if (directory == null || directoryCache == null) return;
 
-                if (this.unregisterDirectoryOnDispose)
-                {
-                    this.directoryCache.UnRegisterDirectory(this.directory.BlockId);
-                }
-                this.directoryCache = null;
-                this.directory = null;
+            directory.Flush();
+
+            if (unRegisterDirectoryOnDispose)
+            {
+                directoryCache.UnRegisterDirectory(directory.BlockId);
             }
+            directoryCache = null;
+            directory = null;
         }
 
         public IFileSystemEntry FindOrDefault(string name)
         {
-            return this.directory.GetDirectoryEntries()
+            return directory.GetDirectoryEntries()
                 .Where(x => x.Name == name)
                 .Select(x => new FileSystemEntry(x))
                 .FirstOrDefault();
@@ -45,34 +45,34 @@ namespace FS.Api
 
         public void Flush()
         {
-            this.directory.Flush();
+            directory.Flush();
         }
 
-        public IFileSystemEntry[] GetEntries()
+        public IEnumerable<IFileSystemEntry> GetEntries()
         {
-            return this.directory.GetDirectoryEntries().Select(x => new FileSystemEntry(x)).ToArray();
+            return directory.GetDirectoryEntries().Select(x => new FileSystemEntry(x)).ToArray();
         }
 
         public IDirectoryEntry OpenDirectory(string name, OpenMode mode)
         {
-            var directory = this.directory.OpenDirectory(name, mode);
-            return new DirectoryEntry(this.directoryCache, directory);
+            var tempDirectory = directory.OpenDirectory(name, mode);
+            return new DirectoryEntry(directoryCache, tempDirectory);
         }
 
         public IFileEntry OpenFile(string name, OpenMode mode)
         {
-            var file = this.directory.OpenFile(name, mode);
-            return new FileEntry(this.directoryCache, file);
+            var file = directory.OpenFile(name, mode);
+            return new FileEntry(directoryCache, file);
         }
 
         public void DeleteFile(string name)
         {
-            this.directory.DeleteFile(name);            
+            directory.DeleteFile(name);            
         }
 
         public void DeleteDirectory(string name)
         {
-            this.directory.DeleteDirectory(name);
+            directory.DeleteDirectory(name);
         }
     }
 }

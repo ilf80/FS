@@ -1,10 +1,10 @@
-﻿using FS.Allocattion;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using FS.Allocation;
 using FS.BlockAccess;
 using FS.BlockAccess.Indexes;
 using FS.Directory;
-using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace FS.Api
 {
@@ -16,7 +16,7 @@ namespace FS.Api
         private readonly Dictionary<int, FileWithRefCount> openedFiles = new Dictionary<int, FileWithRefCount>();
         private readonly ReaderWriterLockSlim cacheLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
-        private bool isDisposed = false;
+        private bool isDisposed;
         private IDirectory rootDirectory;
 
         private FileSystem(IBlockStorage storage, IAllocationManager allocationManager)
@@ -46,12 +46,13 @@ namespace FS.Api
 
         private static FileSystem ReadFromHeader(FSHeader header, IBlockStorage storage)
         {
-            Func<IAllocationManager, IIndex<int>> allocationIndexFactory = (IAllocationManager m) =>
+            IIndex<int> AllocationIndexFactory(IAllocationManager m)
             {
-                IIndexBlockProvier allocationIndexProvider = new IndexBlockProvier(header.AllocationBlock, m, storage);
+                IIndexBlockProvider allocationIndexProvider = new IndexBlockProvider(header.AllocationBlock, m, storage);
                 return new Index<int>(allocationIndexProvider, new BlockStream<int>(allocationIndexProvider), m, storage);
-            };
-            var allocationManager = new AllocationManager(allocationIndexFactory, storage, header.FreeBlockCount);
+            }
+
+            var allocationManager = new AllocationManager(AllocationIndexFactory, storage, header.FreeBlockCount);
 
             var result = new FileSystem(storage, allocationManager);
             var rootDirectory = ((IDirectoryCache)result).ReadDirectory(header.RootDirectoryBlock);
@@ -104,24 +105,24 @@ namespace FS.Api
 
         public IDirectoryEntry GetRootDirectory()
         {
-            return new DirectoryEntry(this, this.rootDirectory, false);
+            return new DirectoryEntry(this, rootDirectory, false);
         }
 
         private void Dispose(bool disposing)
         {
-            if (!this.isDisposed)
+            if (!isDisposed)
             {
                 if (disposing)
                 {
                     WriteHeader();
-                    this.rootDirectory.Flush();
-                    this.allocationManager.Flush();
+                    rootDirectory.Flush();
+                    allocationManager.Flush();
 
-                    this.storage.Dispose();
-                    this.cacheLock.Dispose();
+                    storage.Dispose();
+                    cacheLock.Dispose();
                 }
 
-                this.isDisposed = true;
+                isDisposed = true;
             }
         }
 
@@ -129,11 +130,11 @@ namespace FS.Api
         {
             var fsHeader = new FSHeader
             {
-                AllocationBlock = this.allocationManager.BlockId,
-                RootDirectoryBlock = this.rootDirectory.BlockId,
-                FreeBlockCount = this.allocationManager.ReleasedBlockCount
+                AllocationBlock = allocationManager.BlockId,
+                RootDirectoryBlock = rootDirectory.BlockId,
+                FreeBlockCount = allocationManager.ReleasedBlockCount
             };
-            this.storage.WriteBlock(0, new[] { fsHeader });
+            storage.WriteBlock(0, new[] { fsHeader });
         }
 
         public void Dispose()
@@ -143,17 +144,16 @@ namespace FS.Api
             GC.SuppressFinalize(this);
         }
 
-        IBlockStorage IDirectoryCache.Storage => this.storage;
+        IBlockStorage IDirectoryCache.Storage => storage;
 
-        IAllocationManager IDirectoryCache.AllocationManager => this.allocationManager;
+        IAllocationManager IDirectoryCache.AllocationManager => allocationManager;
 
         IDirectory IDirectoryCache.ReadDirectory(int blockId)
         {
-            this.cacheLock.EnterUpgradeableReadLock();
+            cacheLock.EnterUpgradeableReadLock();
             try
             {
-                DirectoryWithRefCount directoryWithRefCount;
-                if (this.openedDirectories.TryGetValue(blockId, out directoryWithRefCount)) {
+                if (openedDirectories.TryGetValue(blockId, out var directoryWithRefCount)) {
 
                     var directory = Volatile.Read(ref directoryWithRefCount.Directory);
                     if (directory != null)
@@ -163,10 +163,10 @@ namespace FS.Api
                     }
                 }
 
-                this.cacheLock.EnterWriteLock();
+                cacheLock.EnterWriteLock();
                 try
                 {
-                    if (this.openedDirectories.TryGetValue(blockId, out directoryWithRefCount))
+                    if (openedDirectories.TryGetValue(blockId, out directoryWithRefCount))
                     {
                         var directory = Volatile.Read(ref directoryWithRefCount.Directory);
                         if (directory != null)
@@ -180,28 +180,27 @@ namespace FS.Api
                         Directory = Directory.Directory.ReadDirectoryUnsafe(blockId, this),
                         RefCount = 1
                     };
-                    this.openedDirectories.Add(blockId, directoryWithRefCount);
+                    openedDirectories.Add(blockId, directoryWithRefCount);
                     return directoryWithRefCount.Directory;
                 }
                 finally
                 {
-                    this.cacheLock.ExitWriteLock();
+                    cacheLock.ExitWriteLock();
                 }
             }
             finally
             {
-                this.cacheLock.ExitUpgradeableReadLock();
+                cacheLock.ExitUpgradeableReadLock();
             }
         }
 
         IDirectory IDirectoryCache.RegisterDirectory(IDirectory directory)
         {
-            this.cacheLock.EnterWriteLock();
+            cacheLock.EnterWriteLock();
             try
             {
                 var blockId = directory.BlockId;
-                DirectoryWithRefCount directoryWithRefCount;
-                if (this.openedDirectories.TryGetValue(blockId, out directoryWithRefCount))
+                if (openedDirectories.TryGetValue(blockId, out var directoryWithRefCount))
                 {
                     var existingDirectory = Volatile.Read(ref directoryWithRefCount.Directory);
                     if (existingDirectory != null)
@@ -215,22 +214,21 @@ namespace FS.Api
                     Directory = directory,
                     RefCount = 1
                 };
-                this.openedDirectories[blockId] = directoryWithRefCount;
+                openedDirectories[blockId] = directoryWithRefCount;
                 return directory;
             }
             finally
             {
-                this.cacheLock.ExitWriteLock();
+                cacheLock.ExitWriteLock();
             }
         }
 
         void IDirectoryCache.UnRegisterDirectory(int blockId)
         {
-            this.cacheLock.EnterWriteLock();
+            cacheLock.EnterWriteLock();
             try
             {
-                DirectoryWithRefCount directoryWithRefCount;
-                if (this.openedDirectories.TryGetValue(blockId, out directoryWithRefCount))
+                if (openedDirectories.TryGetValue(blockId, out var directoryWithRefCount))
                 {
                     var existingDirectory = Volatile.Read(ref directoryWithRefCount.Directory);
                     if (existingDirectory == null)
@@ -239,7 +237,7 @@ namespace FS.Api
                     }
                     if (Interlocked.Decrement(ref directoryWithRefCount.RefCount) == 0)
                     {
-                        this.openedDirectories.Remove(blockId);
+                        openedDirectories.Remove(blockId);
                         directoryWithRefCount.Directory.Dispose();
                     }
                     return;
@@ -248,17 +246,16 @@ namespace FS.Api
             }
             finally
             {
-                this.cacheLock.ExitWriteLock();
+                cacheLock.ExitWriteLock();
             }
         }
 
         IFile IDirectoryCache.ReadFile(int blockId, Func<IFile> readFile)
         {
-            this.cacheLock.EnterUpgradeableReadLock();
+            cacheLock.EnterUpgradeableReadLock();
             try
             {
-                FileWithRefCount fileWithRefCount;
-                if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                if (openedFiles.TryGetValue(blockId, out var fileWithRefCount))
                 {
 
                     var file = Volatile.Read(ref fileWithRefCount.File);
@@ -269,10 +266,10 @@ namespace FS.Api
                     }
                 }
 
-                this.cacheLock.EnterWriteLock();
+                cacheLock.EnterWriteLock();
                 try
                 {
-                    if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                    if (openedFiles.TryGetValue(blockId, out fileWithRefCount))
                     {
                         var file = Volatile.Read(ref fileWithRefCount.File);
                         if (file != null)
@@ -286,28 +283,27 @@ namespace FS.Api
                         File = readFile(),
                         RefCount = 1
                     };
-                    this.openedFiles.Add(blockId, fileWithRefCount);
+                    openedFiles.Add(blockId, fileWithRefCount);
                     return fileWithRefCount.File;
                 }
                 finally
                 {
-                    this.cacheLock.ExitWriteLock();
+                    cacheLock.ExitWriteLock();
                 }
             }
             finally
             {
-                this.cacheLock.ExitUpgradeableReadLock();
+                cacheLock.ExitUpgradeableReadLock();
             }
         }
 
         IFile IDirectoryCache.RegisterFile(IFile file)
         {
-            this.cacheLock.EnterWriteLock();
+            cacheLock.EnterWriteLock();
             try
             {
                 var blockId = file.BlockId;
-                FileWithRefCount fileWithRefCount;
-                if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                if (openedFiles.TryGetValue(blockId, out var fileWithRefCount))
                 {
                     var existingFile = Volatile.Read(ref fileWithRefCount.File);
                     if (existingFile != null)
@@ -321,22 +317,21 @@ namespace FS.Api
                     File = file,
                     RefCount = 1
                 };
-                this.openedFiles[blockId] = fileWithRefCount;
+                openedFiles[blockId] = fileWithRefCount;
                 return file;
             }
             finally
             {
-                this.cacheLock.ExitWriteLock();
+                cacheLock.ExitWriteLock();
             }
         }
 
         void IDirectoryCache.UnRegisterFile(int blockId)
         {
-            this.cacheLock.EnterWriteLock();
+            cacheLock.EnterWriteLock();
             try
             {
-                FileWithRefCount fileWithRefCount;
-                if (this.openedFiles.TryGetValue(blockId, out fileWithRefCount))
+                if (openedFiles.TryGetValue(blockId, out var fileWithRefCount))
                 {
                     var existingDirectory = Volatile.Read(ref fileWithRefCount.File);
                     if (existingDirectory == null)
@@ -345,7 +340,7 @@ namespace FS.Api
                     }
                     if (Interlocked.Decrement(ref fileWithRefCount.RefCount) == 0)
                     {
-                        this.openedFiles.Remove(blockId);
+                        openedFiles.Remove(blockId);
                         fileWithRefCount.File.Dispose();
                     }
                     return;
@@ -354,7 +349,7 @@ namespace FS.Api
             }
             finally
             {
-                this.cacheLock.ExitWriteLock();
+                cacheLock.ExitWriteLock();
             }
         }
 

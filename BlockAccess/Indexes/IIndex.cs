@@ -1,6 +1,8 @@
-﻿namespace FS.BlockAccess.Indexes
+﻿using FS.Contracts;
+
+namespace FS.BlockAccess.Indexes
 {
-    internal interface IIndex<T> : IBlockProvider<T>, IFlushable where T : struct
+    internal interface IIndex<T> : IBlockProvider<T>, ISupportsFlush where T : struct
     {
         int BlockId { get; }
     }
