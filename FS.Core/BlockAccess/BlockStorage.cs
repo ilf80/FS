@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using FS.Api;
 using FS.Core.Api.BlockAccess;
-using FS.Core.Contracts;
 
 namespace FS.Core.BlockAccess
 {
@@ -19,7 +18,7 @@ namespace FS.Core.BlockAccess
 
         public long TotalSize => fileStream.Length;
 
-        public int BlockSize => Constants.BlockSize;
+        public int BlockSize => Constants.Constants.BlockSize;
 
         public BlockStorage(string fileName)
         {
@@ -35,7 +34,7 @@ namespace FS.Core.BlockAccess
                 fileMode,
                 FileAccess.ReadWrite,
                 FileShare.Read,
-                Constants.BlockSize,
+                Constants.Constants.BlockSize,
                 FileOptions.RandomAccess);
             isOpened = true;
         }
@@ -51,8 +50,8 @@ namespace FS.Core.BlockAccess
             lockObject.Wait();
             try
             {
-                fileStream.Position = blockIndex * Constants.BlockSize;
-                fileStream.Read(buffer, 0, Constants.BlockSize);
+                fileStream.Position = blockIndex * Constants.Constants.BlockSize;
+                fileStream.Read(buffer, 0, Constants.Constants.BlockSize);
             }
             finally
             {
@@ -75,8 +74,8 @@ namespace FS.Core.BlockAccess
                 lockObject.Wait();
                 try
                 {
-                    fileStream.Position = blockIndex * Constants.BlockSize;
-                    fileStream.Read(tempBuffer, 0, Constants.BlockSize);
+                    fileStream.Position = blockIndex * Constants.Constants.BlockSize;
+                    fileStream.Read(tempBuffer, 0, Constants.Constants.BlockSize);
                 }
                 finally
                 {
@@ -102,8 +101,8 @@ namespace FS.Core.BlockAccess
             lockObject.Wait();
             try
             {
-                fileStream.Position = blockIndex * Constants.BlockSize;
-                fileStream.Write(buffer, 0, Constants.BlockSize);
+                fileStream.Position = blockIndex * Constants.Constants.BlockSize;
+                fileStream.Write(buffer, 0, Constants.Constants.BlockSize);
             }
             finally
             {
@@ -134,8 +133,8 @@ namespace FS.Core.BlockAccess
             lockObject.Wait();
             try
             {
-                fileStream.Position = blockIndex * Constants.BlockSize;
-                fileStream.Write(tempBuffer, 0, Constants.BlockSize);
+                fileStream.Position = blockIndex * Constants.Constants.BlockSize;
+                fileStream.Write(tempBuffer, 0, Constants.Constants.BlockSize);
             }
             finally
             {

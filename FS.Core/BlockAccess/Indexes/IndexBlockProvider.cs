@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using FS.Core.Api.BlockAccess.Indexes;
 using FS.Core.Api.Common;
-using FS.Core.Contracts;
 
 namespace FS.Core.BlockAccess.Indexes
 {
@@ -25,9 +24,9 @@ namespace FS.Core.BlockAccess.Indexes
 
         public int BlockId { get; }
 
-        public int BlockSize => Constants.MaxItemsInIndexPage;
+        public int BlockSize => Constants.Constants.MaxItemsInIndexPage;
 
-        public int EntrySize => Constants.IndexEntrySize;
+        public int EntrySize => Constants.Constants.IndexEntrySize;
 
         public int SizeInBlocks
         {
@@ -43,9 +42,9 @@ namespace FS.Core.BlockAccess.Indexes
             get
             {
                 EnsureLoaded();
-                return (indexList.Count - 1) * Constants.MaxItemsInIndexPage
+                return (indexList.Count - 1) * Constants.Constants.MaxItemsInIndexPage
                     + (indexList.Count > 0 
-                    ? indexList.Last.Value.Count(x => x != Constants.EmptyBlockIndex)
+                    ? indexList.Last.Value.Count(x => x != Constants.Constants.EmptyBlockIndex)
                     : 0);
             }
         }
@@ -95,7 +94,7 @@ namespace FS.Core.BlockAccess.Indexes
                 foreach(var blockId in blocks)
                 {
                     SetNextExtensionBlockIndex(indexList.Last.Value, blockId);
-                    indexList.AddLast(new int[Constants.IndexPageSize]);
+                    indexList.AddLast(new int[Constants.Constants.IndexPageSize]);
                 }
             }
             else
@@ -104,7 +103,7 @@ namespace FS.Core.BlockAccess.Indexes
                 for(var i = 0; i < blocks.Length; i++)
                 {
                     indexList.RemoveLast();
-                    SetNextExtensionBlockIndex(indexList.Last.Value, Constants.EmptyBlockIndex);
+                    SetNextExtensionBlockIndex(indexList.Last.Value, Constants.Constants.EmptyBlockIndex);
                 }
                 accessParameters.AllocationManager.Release(blocks);
             }
@@ -140,10 +139,10 @@ namespace FS.Core.BlockAccess.Indexes
         {
             int[] index;
             for (var extensionBlockIndex = BlockId;
-                extensionBlockIndex != Constants.EmptyBlockIndex;
+                extensionBlockIndex != Constants.Constants.EmptyBlockIndex;
                 extensionBlockIndex = GetNextExtensionBlockIndex(index))
             {
-                index = new int[Constants.IndexPageSize];
+                index = new int[Constants.Constants.IndexPageSize];
                 accessParameters.Storage.ReadBlock(extensionBlockIndex, index);
                 indexList.AddLast(index);
             }

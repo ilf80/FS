@@ -1,4 +1,4 @@
-﻿namespace FS.Core.Contracts
+﻿namespace FS.Core.Constants
 {
     internal static class Constants
     {
