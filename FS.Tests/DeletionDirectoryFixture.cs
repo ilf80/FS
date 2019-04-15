@@ -1,5 +1,4 @@
 ﻿using System;
-using FakeItEasy.Sdk;
 using FS.Core;
 using Moq;
 using NUnit.Framework;
