@@ -14,6 +14,7 @@ namespace FS.Core
 
         public AllocationManager(
             IFactory<IIndex<int>, IAllocationManager> indexFactory,
+            IFactory<IBlockStream<int>, IIndex<int>> blockStreamFactory,
             IBlockStorage storage,
             int freeSpaceBlocksCount)
         {
@@ -22,10 +23,15 @@ namespace FS.Core
                 throw new ArgumentNullException(nameof(indexFactory));
             }
 
+            if (blockStreamFactory == null)
+            {
+                throw new ArgumentNullException(nameof(blockStreamFactory));
+            }
+
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
             index = indexFactory.Create(this);
-            blockStream = new BlockStream<int>(index);
+            blockStream = blockStreamFactory.Create(index);
             ReleasedBlockCount = freeSpaceBlocksCount;
         }
 
