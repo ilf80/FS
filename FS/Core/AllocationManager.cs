@@ -14,7 +14,7 @@ namespace FS.Core
 
         public AllocationManager(
             IFactory<IIndex<int>, IAllocationManager> indexFactory,
-            IFactory<IBlockStream<int>, IIndex<int>> blockStreamFactory,
+            IFactory<IBlockStream<int>, IBlockProvider<int>> blockStreamFactory,
             IBlockStorage storage,
             int freeSpaceBlocksCount)
         {

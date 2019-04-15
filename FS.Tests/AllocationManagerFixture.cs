@@ -11,7 +11,7 @@ namespace FS.Tests
     {
         private Mock<IFactory<IIndex<int>, IAllocationManager>> indexFactory;
         private Mock<IBlockStorage> storage;
-        private Mock<IFactory<IBlockStream<int>, IIndex<int>>> blockStreamFactory;
+        private Mock<IFactory<IBlockStream<int>, IBlockProvider<int>>> blockStreamFactory;
         private int freeSpaceBlocksCount;
         private Mock<IIndex<int>> index;
         private Mock<IBlockStream<int>> blockStream;
@@ -26,7 +26,7 @@ namespace FS.Tests
             indexFactory.Setup(x => x.Create(It.IsAny<IAllocationManager>())).Returns(index.Object);
 
             blockStream = new Mock<IBlockStream<int>>();
-            blockStreamFactory = new Mock<IFactory<IBlockStream<int>, IIndex<int>>>();
+            blockStreamFactory = new Mock<IFactory<IBlockStream<int>, IBlockProvider<int>>>();
             blockStreamFactory.Setup(x => x.Create(It.IsAny<IIndex<int>>())).Returns(blockStream.Object);
         }
 
