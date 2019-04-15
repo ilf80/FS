@@ -130,6 +130,7 @@ namespace FS.Core
                 for (var i = 0; i < blocks.Length; i++)
                 {
                     indexList.RemoveLast();
+                    blocks[blocks.Length - i - 1] = GetNextExtensionBlockIndex(indexList.Last.Value);
                     SetNextExtensionBlockIndex(indexList.Last.Value, Constants.EmptyBlockIndex);
                 }
 

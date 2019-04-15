@@ -1,5 +1,7 @@
-﻿using FakeItEasy;
+﻿using System;
+using System.Linq;
 using FS.Core;
+using Moq;
 using NUnit.Framework;
 
 namespace FS.Tests
@@ -12,32 +14,18 @@ namespace FS.Tests
         {
             rootBlockIndex = 123;
 
-            storage = A.Fake<IBlockStorage>();
-            A.CallTo(() => storage.IndexPageSize).Returns(3);
-            A.CallTo(() => storage.MaxItemsInIndexPage).Returns(2);
+            storage = new Mock<IBlockStorage>();
+            storage.SetupGet(x => x.IndexPageSize).Returns(3);
+            storage.SetupGet(x => x.MaxItemsInIndexPage).Returns(2);
 
 
-            allocationManager = A.Fake<IAllocationManager>();
-            accessParameters = A.Fake<ICommonAccessParameters>();
-
-            A.CallTo(() => accessParameters.Storage).Returns(storage);
-            A.CallTo(() => accessParameters.AllocationManager).Returns(allocationManager);
-
-            //A.CallTo(() => provider.Read(0, A<byte[]>._)).Invokes((int position, byte[] buffer) =>
-            //{
-            //    Array.Copy(readBuffer, buffer, readBuffer.Length);
-            //});
-            //A.CallTo(() => provider.Read(1, A<byte[]>._)).Invokes((int position, byte[] buffer) =>
-            //{
-            //    Array.Copy(readBuffer2, buffer, readBuffer2.Length);
-            //});
-
-            //readBuffer = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17};
-            //readBuffer2 = new byte[] {21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37};
+            allocationManager = new Mock<IAllocationManager>();
+            accessParameters = Mock.Of<ICommonAccessParameters>(
+                x => x.Storage == storage.Object && x.AllocationManager == allocationManager.Object);
         }
 
-        private IBlockStorage storage;
-        private IAllocationManager allocationManager;
+        private Mock<IBlockStorage> storage;
+        private Mock<IAllocationManager> allocationManager;
         private ICommonAccessParameters accessParameters;
         private int rootBlockIndex;
 
@@ -51,12 +39,21 @@ namespace FS.Tests
         {
             // Given
             var instance = CreateInstance();
+            storage.Setup(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] {1, 2, 77}, buffer, 3));
+            storage.Setup(x => x.ReadBlock(77, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] {3, 4, 0}, buffer, 3));
 
             // When
-            instance.Read(0, new int[1]);
+            var result = new int[2];
+            instance.Read(0, result);
 
             // Then
-            A.CallTo(() => storage.ReadBlock(rootBlockIndex, A<int[]>._)).MustHaveHappened(1, Times.Exactly);
+            storage.Verify(x => x.ReadBlock(123, It.IsAny<int[]>()), Times.Exactly(1));
+            storage.Verify(x => x.ReadBlock(77, It.IsAny<int[]>()), Times.Exactly(1));
+            storage.Verify(x => x.ReadBlock(It.IsAny<int>(), It.IsAny<int[]>()), Times.Exactly(2));
+
+            CollectionAssert.AreEqual(result, new[] {1, 2});
         }
 
         [Test]
@@ -70,7 +67,7 @@ namespace FS.Tests
             var result = instance.SizeInBlocks;
 
             // Then
-            A.CallTo(() => storage.ReadBlock(rootBlockIndex, A<int[]>._)).MustHaveHappened(1, Times.Exactly);
+            storage.Verify(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()), Times.Exactly(1));
         }
 
         [Test]
@@ -84,7 +81,7 @@ namespace FS.Tests
             var result = instance.UsedEntryCount;
 
             // Then
-            A.CallTo(() => storage.ReadBlock(rootBlockIndex, A<int[]>._)).MustHaveHappened(1, Times.Exactly);
+            storage.Verify(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()), Times.Exactly(1));
         }
 
         [Test]
@@ -97,7 +94,7 @@ namespace FS.Tests
             instance.Read(0, new int[1]);
 
             // Then
-            A.CallTo(() => storage.ReadBlock(rootBlockIndex, A<int[]>._)).MustHaveHappened(1, Times.Exactly);
+            storage.Verify(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()), Times.Exactly(1));
         }
 
         [Test]
@@ -110,7 +107,7 @@ namespace FS.Tests
             instance.SetSizeInBlocks(1);
 
             // Then
-            A.CallTo(() => storage.ReadBlock(rootBlockIndex, A<int[]>._)).MustHaveHappened(1, Times.Exactly);
+            storage.Verify(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()), Times.Exactly(1));
         }
 
         [Test]
@@ -123,7 +120,147 @@ namespace FS.Tests
             instance.Write(0, new int[1]);
 
             // Then
-            A.CallTo(() => storage.ReadBlock(rootBlockIndex, A<int[]>._)).MustHaveHappened(1, Times.Exactly);
+            storage.Verify(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()), Times.Exactly(1));
+        }
+
+        [Test]
+        public void ShouldReadIndexCorrectly()
+        {
+            // Given
+            var instance = CreateInstance();
+            storage.Setup(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] {1, 2, 77}, buffer, 3));
+            storage.Setup(x => x.ReadBlock(77, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] {3, 4, 0}, buffer, 3));
+
+            // When
+            var result = new int[2];
+            instance.Read(1, result);
+
+            // Then
+            storage.Verify(x => x.ReadBlock(123, It.IsAny<int[]>()), Times.Exactly(1));
+            storage.Verify(x => x.ReadBlock(77, It.IsAny<int[]>()), Times.Exactly(1));
+            storage.Verify(x => x.ReadBlock(It.IsAny<int>(), It.IsAny<int[]>()), Times.Exactly(2));
+
+            CollectionAssert.AreEqual(result, new[] {3, 4});
+        }
+
+        [Test]
+        public void ShouldWriteAndFlushIndexCorrectly()
+        {
+            // Given
+            var instance = CreateInstance();
+            storage.Setup(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] { 1, 2, 77 }, buffer, 3));
+            storage.Setup(x => x.ReadBlock(77, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] { 3, 4, 0 }, buffer, 3));
+
+            // When
+            var result = new[] { 6, 5 };
+            instance.Write(0, result);
+            instance.Flush();
+
+            // Then
+            storage.Verify(x => x.ReadBlock(123, It.IsAny<int[]>()), Times.Exactly(1));
+            storage.Verify(x => x.ReadBlock(77, It.IsAny<int[]>()), Times.Exactly(1));
+            storage.Verify(x => x.ReadBlock(It.IsAny<int>(), It.IsAny<int[]>()), Times.Exactly(2));
+
+            storage.Verify(x => x.WriteBlock(rootBlockIndex, It.Is<int[]>(y => Helpers.CollectionsAreEqual(new[] { 6, 5, 77 }, y))),
+                Times.Exactly(1));
+            storage.Verify(x => x.WriteBlock(77, It.Is<int[]>(y => Helpers.CollectionsAreEqual(new[] { 3, 4, 0 }, y))),
+                Times.Exactly(1));
+        }
+
+        [Test]
+        public void ShouldNotFlushIfNoWrites()
+        {
+            // Given
+            var instance = CreateInstance();
+            storage.Setup(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] { 1, 2, 0 }, buffer, 3));
+
+            var result = new int[2];
+            instance.Read(0, result);
+
+            // When
+            instance.Flush();
+
+            // Then
+            storage.Verify(x => x.WriteBlock(It.IsAny<int>(), It.IsAny<int[]>()), Times.Never);
+        }
+
+        [Test]
+        public void ShouldComputeUsedEntryCount()
+        {
+            // Given
+            var instance = CreateInstance();
+            storage.Setup(x => x.ReadBlock(rootBlockIndex, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] { 1, 2, 77 }, buffer, 3));
+            storage.Setup(x => x.ReadBlock(77, It.IsAny<int[]>()))
+                .Callback((int index, int[] buffer) => Array.Copy(new[] { 3, 0, 0 }, buffer, 3));
+
+            // When
+            var result = instance.UsedEntryCount;
+
+            // Then
+            Assert.AreEqual(3, result);
+        }
+
+        [Test]
+        public void ShouldIncreaseSize()
+        {
+            // Given
+            var instance = CreateInstance();
+            var buffer = Enumerable.Range(1, 10).ToArray();
+            allocationManager.Setup(x => x.Allocate(It.IsAny<int>()))
+                .Returns(buffer);
+
+            // When
+            instance.SetSizeInBlocks(10);
+
+            // Then
+            allocationManager.Verify(x => x.Allocate(9), Times.Exactly(1));
+            allocationManager.Verify(x => x.Allocate(It.IsAny<int>()), Times.Exactly(1));
+        }
+
+        [Test]
+        public void ShouldCorrectlyReturnAllocatedIndexes()
+        {
+            // Given
+            var instance = CreateInstance();
+            var buffer = Enumerable.Range(1, 10).ToArray();
+            allocationManager.Setup(x => x.Allocate(It.IsAny<int>()))
+                .Returns(buffer);
+
+            instance.SetSizeInBlocks(10);
+
+            // When
+            var result = new int[3];
+            instance.Read(5, result);
+            var count = instance.UsedEntryCount;
+
+            // Then
+            CollectionAssert.AreEqual(new[] { 0, 0, 6 }, result);
+            Assert.AreEqual(20, count);
+        }
+
+        [Test]
+        public void ShouldShrink()
+        {
+            // Given
+            var instance = CreateInstance();
+            var buffer = Enumerable.Range(1, 10).ToArray();
+            allocationManager.Setup(x => x.Allocate(It.IsAny<int>()))
+                .Returns(buffer);
+
+            instance.SetSizeInBlocks(10);
+
+            // When
+            instance.SetSizeInBlocks(1);
+
+            // Then
+            allocationManager.Verify(x => x.Release(It.Is<int[]>(y => Helpers.CollectionsAreEqual(buffer, y))), Times.Exactly(1));
+            allocationManager.Verify(x => x.Release(It.IsAny<int[]>()), Times.Exactly(1));
         }
     }
 }
