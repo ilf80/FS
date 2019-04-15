@@ -4,10 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using FS.Api;
-using FS.Api.Container;
 using FS.Container;
-using FS.Core.Container;
 using NUnit.Framework;
 using Unity;
 
@@ -16,17 +13,11 @@ namespace FS.Tests.IntegrationTests
     [TestFixture]
     public sealed class CreateFsWith100Dirs
     {
-        private string filePath;
-        private Stream stream;
-        private IUnityContainer container;
-
         [SetUp]
         public void SetUp()
         {
             container = new UnityContainer()
-                .AddExtension(new CoreRegistration())
-                .AddExtension(new FactoryExtension())
-                .AddExtension(new FSExtentions())
+                .AddExtension(new UnityExtension())
                 .AddExtension(new Diagnostic());
 
             filePath = Path.Combine(Path.GetTempPath(), "TestFile.dat");
@@ -45,6 +36,10 @@ namespace FS.Tests.IntegrationTests
             }
         }
 
+        private string filePath;
+        private Stream stream;
+        private IUnityContainer container;
+
         [Test]
         public void GenerateDirectoriesAndRead()
         {
@@ -54,7 +49,7 @@ namespace FS.Tests.IntegrationTests
                 fs.Open(filePath, OpenMode.Create);
                 var root = fs.GetRootDirectory();
 
-                
+
                 for (var i = 0; i < 100; i++)
                 {
                     var name = "Dir " + i;
@@ -68,52 +63,11 @@ namespace FS.Tests.IntegrationTests
                 using (var reader = new StreamReader(stream))
                 {
                     writer.Write(reader.ReadToEnd());
-                    file.SetSize((int)memoryStream.Length);
+                    file.SetSize((int) memoryStream.Length);
                     file.Write(0, memoryStream.ToArray());
                 }
+
                 nameList.Add("Program.cs");
-            }
-
-            using (var fs = container.Resolve<IFileSystem>())
-            {
-                fs.Open(filePath, OpenMode.OpenExisting);
-                var root = fs.GetRootDirectory();
-
-                CollectionAssert.AreEqual(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
-            }
-        }
-
-        [Test]
-        public void GenerateDirectoriesDeleteOneAndRead()
-        {
-            var nameList = new List<string>();
-            using (var fs = container.Resolve<IFileSystem>())
-            {
-                fs.Open(filePath, OpenMode.Create);
-
-                var root = fs.GetRootDirectory();
-
-
-                for (var i = 0; i < 100; i++)
-                {
-                    var name = "Dir " + i;
-                    root.OpenDirectory(name, OpenMode.OpenOrCreate).Dispose();
-                    nameList.Add(name);
-                }
-
-                using (var file = root.OpenFile("Program.cs", OpenMode.OpenOrCreate))
-                using (var memoryStream = new MemoryStream())
-                using (var writer = new BinaryWriter(memoryStream, Encoding.Unicode))
-                using (var reader = new StreamReader(stream))
-                {
-                    writer.Write(reader.ReadToEnd());
-                    file.SetSize((int)memoryStream.Length);
-                    file.Write(0, memoryStream.ToArray());
-                }
-                nameList.Add("Program.cs");
-
-                root.DeleteDirectory("Dir 99");
-                nameList.Remove("Dir 99");
             }
 
             using (var fs = container.Resolve<IFileSystem>())
@@ -149,10 +103,54 @@ namespace FS.Tests.IntegrationTests
                 using (var reader = new StreamReader(stream))
                 {
                     writer.Write(reader.ReadToEnd());
-                    file.SetSize((int)memoryStream.Length);
+                    file.SetSize((int) memoryStream.Length);
                     file.Write(0, memoryStream.ToArray());
                 }
+
                 root.DeleteFile("Program.cs");
+            }
+
+            using (var fs = container.Resolve<IFileSystem>())
+            {
+                fs.Open(filePath, OpenMode.OpenExisting);
+                var root = fs.GetRootDirectory();
+
+                CollectionAssert.AreEqual(nameList.ToArray(), root.GetEntries().Select(x => x.Name).ToArray());
+            }
+        }
+
+        [Test]
+        public void GenerateDirectoriesDeleteOneAndRead()
+        {
+            var nameList = new List<string>();
+            using (var fs = container.Resolve<IFileSystem>())
+            {
+                fs.Open(filePath, OpenMode.Create);
+
+                var root = fs.GetRootDirectory();
+
+
+                for (var i = 0; i < 100; i++)
+                {
+                    var name = "Dir " + i;
+                    root.OpenDirectory(name, OpenMode.OpenOrCreate).Dispose();
+                    nameList.Add(name);
+                }
+
+                using (var file = root.OpenFile("Program.cs", OpenMode.OpenOrCreate))
+                using (var memoryStream = new MemoryStream())
+                using (var writer = new BinaryWriter(memoryStream, Encoding.Unicode))
+                using (var reader = new StreamReader(stream))
+                {
+                    writer.Write(reader.ReadToEnd());
+                    file.SetSize((int) memoryStream.Length);
+                    file.Write(0, memoryStream.ToArray());
+                }
+
+                nameList.Add("Program.cs");
+
+                root.DeleteDirectory("Dir 99");
+                nameList.Remove("Dir 99");
             }
 
             using (var fs = container.Resolve<IFileSystem>())
@@ -198,7 +196,11 @@ namespace FS.Tests.IntegrationTests
             }
 
             var nameList = new List<string>();
-            for (var i = 0; i < 150; i++) nameList.Add("Dir " + i);
+            for (var i = 0; i < 150; i++)
+            {
+                nameList.Add("Dir " + i);
+            }
+
             using (var fs = container.Resolve<IFileSystem>())
             {
                 fs.Open(filePath, OpenMode.OpenExisting);

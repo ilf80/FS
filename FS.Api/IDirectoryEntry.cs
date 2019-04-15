@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace FS.Api
+namespace FS
 {
     public interface IDirectoryEntry : IDisposable
     {
         IEnumerable<IFileSystemEntry> GetEntries();
 
-        IFileSystemEntry FindOrDefault(string name);
+        bool TryGetEntry(string name, out IFileSystemEntry entry);
 
         IFileEntry OpenFile(string name, OpenMode mode);
 

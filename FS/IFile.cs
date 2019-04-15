@@ -2,7 +2,7 @@
 
 namespace FS
 {
-    public interface IFileEntry : IDisposable
+    internal interface IFile : IBlockHandle, ISupportsFlush, IDisposable
     {
         int Size { get; }
 
@@ -11,7 +11,5 @@ namespace FS
         void Write(int position, byte[] buffer);
 
         void SetSize(int size);
-
-        void Flush();
     }
 }

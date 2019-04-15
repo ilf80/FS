@@ -2,7 +2,7 @@
 
 namespace FS
 {
-    public interface IFileSystemEntry
+    internal interface IDirectoryEntryInfo
     {
         bool IsDirectory { get; }
 
@@ -13,5 +13,7 @@ namespace FS
         DateTime Updated { get; }
 
         string Name { get; }
+
+        int BlockId { get; }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace FS.Api
+namespace FS
 {
     public interface IFileSystem : IDisposable
     {

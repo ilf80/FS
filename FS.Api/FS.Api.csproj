@@ -1,16 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard1.0</TargetFramework>
+    <RootNamespace>FS</RootNamespace>
+    <AssemblyName />
   </PropertyGroup>
-
-  <ItemGroup>
-    <Reference Include="Unity.Abstractions">
-      <HintPath>..\..\..\..\.nuget\packages\unity\5.10.3\lib\netstandard2.0\Unity.Abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.Container">
-      <HintPath>..\..\..\..\.nuget\packages\unity\5.10.3\lib\netstandard2.0\Unity.Container.dll</HintPath>
-    </Reference>
-  </ItemGroup>
 
 </Project>

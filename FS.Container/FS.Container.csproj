@@ -5,7 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Unity" Version="5.10.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FS.Api\FS.Api.csproj" />
+    <ProjectReference Include="..\FS\FS.csproj" />
   </ItemGroup>
 
 </Project>

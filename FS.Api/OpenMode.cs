@@ -1,4 +1,4 @@
-﻿namespace FS.Api
+﻿namespace FS
 {
     public enum OpenMode
     {

@@ -13,16 +13,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Moq" Version="4.10.1" />
     <PackageReference Include="FakeItEasy" Version="5.1.0" />
     <PackageReference Include="NUnit" Version="3.11.0" />
-    <PackageReference Include="System.CodeDom" Version="4.5.0" />
     <PackageReference Include="Unity" Version="5.10.3" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.11.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FS.Core\FS.Core.csproj" />
+    <ProjectReference Include="..\FS.Api\FS.Api.csproj" />
+    <ProjectReference Include="..\FS.Container\FS.Container.csproj" />
     <ProjectReference Include="..\FS\FS.csproj" />
   </ItemGroup>
 
