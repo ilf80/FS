@@ -9,6 +9,12 @@ namespace FS.Core.Api.BlockAccess
 
         int BlockSize { get; }
 
+        int IndexEntrySize { get; }
+
+        int IndexPageSize { get; }
+
+        int MaxItemsInIndexPage { get; }
+
         void ReadBlock(int blockIndex, byte[] buffer);
 
         void WriteBlock(int blockIndex, byte[] buffer);

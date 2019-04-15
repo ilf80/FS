@@ -20,6 +20,12 @@ namespace FS.Core.BlockAccess
 
         public int BlockSize => Constants.Constants.BlockSize;
 
+        public int IndexEntrySize => Constants.Constants.IndexEntrySize;
+
+        public int IndexPageSize => Constants.Constants.IndexPageSize;
+
+        public int MaxItemsInIndexPage => Constants.Constants.MaxItemsInIndexPage;
+
         public BlockStorage(string fileName)
         {
             this.fileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
