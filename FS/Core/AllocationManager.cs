@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 namespace FS.Core
 {
@@ -43,8 +42,7 @@ namespace FS.Core
 
             var allocatedFromIndexBlocks = new int[0];
 
-            Monitor.Enter(lockObject);
-            try
+            lock(lockObject)
             {
                 var allocatedFromIndexBlockCount = Math.Min(ReleasedBlockCount, blockCount);
                 if (allocatedFromIndexBlockCount > 0)
@@ -65,10 +63,6 @@ namespace FS.Core
                     return allocatedFromIndexBlocks.Concat(blocks).ToArray();
                 }
             }
-            finally
-            {
-                Monitor.Exit(lockObject);
-            }
 
             EraseBlocks(allocatedFromIndexBlocks);
             return allocatedFromIndexBlocks;
@@ -86,29 +80,19 @@ namespace FS.Core
                 throw new ArgumentException("Value cannot be an empty collection.", nameof(blocks));
             }
 
-            Monitor.Enter(lockObject);
-            try
+            lock(lockObject)
             {
                 index.SetSizeInBlocks(Helpers.ModBaseWithCeiling(ReleasedBlockCount + blocks.Length, blockStream.Provider.BlockSize));
                 blockStream.Write(ReleasedBlockCount, blocks);
                 ReleasedBlockCount += blocks.Length;
             }
-            finally
-            {
-                Monitor.Exit(lockObject);
-            }
         }
 
         public void Flush()
         {
-            Monitor.Enter(lockObject);
-            try
+            lock(lockObject)
             {
                 index.Flush();
-            }
-            finally
-            {
-                Monitor.Exit(lockObject);
             }
         }
 
