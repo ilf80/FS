@@ -1,4 +1,5 @@
-﻿using FS.Core;
+﻿using System;
+using FS.Core;
 using Moq;
 using NUnit.Framework;
 
@@ -55,6 +56,61 @@ namespace FS.Tests
             index.Verify(x => x.SetSizeInBlocks(0), Times.Once);
             allocationManager.Verify(x => x.Release(It.Is<int[]>(y => Helpers.CollectionsAreEqual(new[] {123}, y))),
                 Times.Once);
+        }
+
+        [Test]
+        public void ShouldNotGetSize()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.Size.Equals(0); });
+        }
+
+        [Test]
+        public void ShouldNotFlush()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.Flush(); });
+        }
+
+        [Test]
+        public void ShouldNotRead()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.Read(1, new byte[1]); });
+        }
+
+        [Test]
+        public void ShouldNotWrite()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.Write(1, new byte[1]); });
+        }
+
+        [Test]
+        public void ShouldNotSetSize()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.SetSize(1); });
         }
 
         private DeletionFile CreateInstance()

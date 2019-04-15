@@ -83,7 +83,7 @@ namespace FS.Core
             indexLock.EnterUpgradeableReadLock();
             try
             {
-                var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
+                var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name && x.IsDirectory);
                 if (entry != null)
                 {
                     if (openMode == OpenMode.Create)
@@ -142,7 +142,7 @@ namespace FS.Core
             indexLock.EnterUpgradeableReadLock();
             try
             {
-                var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name);
+                var entry = GetDirectoryEntries().FirstOrDefault(x => x.Name == name && !x.IsDirectory);
                 if (entry != null)
                 {
                     if (openMode == OpenMode.Create)

@@ -58,6 +58,83 @@ namespace FS.Tests
             directoryCache.Verify(x => x.UnRegisterDirectory(blockId));
         }
 
+        [Test]
+        public void ShouldNotDeleteDirectory()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.DeleteDirectory(""); });
+        }
+
+        [Test]
+        public void ShouldNotDeleteFile()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.DeleteFile(""); });
+        }
+
+        [Test]
+        public void ShouldNotFlush()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.Flush(); });
+        }
+
+        [Test]
+        public void ShouldNotGetDirectoryEntries()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.GetDirectoryEntries(); });
+        }
+
+        [Theory]
+        public void ShouldNotOpenDirectory(OpenMode mode)
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.OpenDirectory("Test", mode); });
+        }
+
+        [Theory]
+        public void ShouldNotOpenFile(OpenMode mode)
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.OpenFile("Test", mode); });
+        }
+
+        [Test]
+        public void ShouldNotUpdateEntry()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            // Then
+            Assert.Throws<InvalidOperationException>(delegate { instance.UpdateEntry(1, Mock.Of<IDirectoryEntryInfoOverrides>()); });
+        }
+
         private DeletionDirectory CreateInstance()
         {
             return new DeletionDirectory(directoryCache.Object, blockId, unsafeDirectoryReaderFactory.Object);

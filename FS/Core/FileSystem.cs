@@ -35,6 +35,11 @@ namespace FS.Core
                 throw new InvalidOperationException($"{nameof(FileSystem)} is already opened");
             }
 
+            if (isDisposed)
+            {
+                throw new ObjectDisposedException(nameof(FileSystem));
+            }
+
             isOpened = true;
 
             provider.Open(fileName, openMode);
