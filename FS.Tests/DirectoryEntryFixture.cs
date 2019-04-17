@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using FS.Core;
 using Moq;
 using NUnit.Framework;
@@ -182,6 +183,32 @@ namespace FS.Tests
             // Then
             Assert.IsFalse(result);
             Assert.IsNull(entry);
+        }
+
+        [Test]
+        public void ShouldNotGetEntriesWhenDisposed()
+        {
+            // Given
+            var instance = CreateInstance();
+            instance.Dispose();
+
+            // When
+            // Then
+            // ReSharper disable once UnusedVariable
+            Assert.Throws<ObjectDisposedException>(delegate { instance.GetEntries(); });
+        }
+
+        [Test]
+        public void ShouldGetEntries()
+        {
+            // Given
+            var instance = CreateInstance();
+
+            // When
+            var result = instance.GetEntries();
+
+            // Then
+            Assert.AreEqual(3, result.Count());
         }
 
         [Test]
