@@ -6,7 +6,6 @@ namespace FS.Core
     // ReSharper disable once ClassNeverInstantiated.Global
     internal sealed class File : IFile
     {
-        private readonly int blockId;
         private readonly IBlockStream<byte> blockStream;
         private readonly int directoryBlockId;
         private readonly IDirectoryCache directoryCache;
@@ -37,11 +36,10 @@ namespace FS.Core
 
             this.directoryCache = directoryCache ?? throw new ArgumentNullException(nameof(directoryCache));
 
-            blockId = fileParameters.BlockId;
             directoryBlockId = fileParameters.ParentDirectoryBlockId;
             Size = fileParameters.Size;
 
-            var provider = indexBlockProviderFactory.Create(blockId, this.directoryCache);
+            var provider = indexBlockProviderFactory.Create(fileParameters.BlockId, this.directoryCache);
             index = indexFactory.Create(provider, directoryCache);
             blockStream = blockStreamFactory.Create(index);
         }
@@ -142,7 +140,7 @@ namespace FS.Core
             var directory = directoryCache.ReadDirectory(directoryBlockId);
             try
             {
-                directory.UpdateEntry(blockId, new DirectoryEntryInfoOverrides(Size, DateTime.Now));
+                directory.UpdateEntry(BlockId, new DirectoryEntryInfoOverrides(Size, DateTime.Now));
             }
             finally
             {
